@@ -6,7 +6,6 @@ class User(BaseModel):
     email: str
     senha: str
     tipo: str
-    turmas: List[str]
     cidades: List[str]
 
 class UserInDB(User):

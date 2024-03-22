@@ -4,8 +4,6 @@ from .models import User, UserInDB
 
 router = APIRouter()
 
-
-
 @router.get("/users/")
 async def list_users():
     return await database.list_users()
