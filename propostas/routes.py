@@ -10,12 +10,15 @@ async def list_propostas():
 
 @router.get("/propostas/{proposta_id}")
 async def get_proposta(proposta_id: str):
-    proposta = await database.get_proposta(proposta_id)
-    if proposta:
-        return proposta
-    else:
-        raise HTTPException(status_code=404, detail="Proposta não encontrada")
-
+    try:
+        proposta = await database.get_proposta(proposta_id)
+        if proposta:
+            return proposta
+        else:
+            raise HTTPException(status_code=404, detail="Proposta não encontrada")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+    
 @router.post("/propostas/")
 async def create_proposta(proposta: Proposta = Body(...)):
     new_proposta = await database.create_proposta(proposta)
