@@ -28,9 +28,13 @@ async def get_turma(turma_id: str) -> TurmaInDB:
 
 async def update_turma(turma_id: str, turma: Turma) -> dict:
     result = collection.update_one({"_id": ObjectId(turma_id)}, {"$set": turma.dict()})
-    if result.modified_count == 1:
-        return {"message": "Turma atualizada com sucesso"}
-
+    if result.modified_count == 1:        
+        updated_turma = collection.find_one({"_id": ObjectId(turma_id)})
+        return {
+            "message": "Turma atualizada com sucesso", 
+            "result": TurmaInDB(**updated_turma)
+        }
+        
 async def delete_turma(turma_id: str) -> dict:
     result = collection.delete_one({"_id": ObjectId(turma_id)})
     if result.deleted_count == 1:

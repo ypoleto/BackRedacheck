@@ -6,6 +6,7 @@ class Turma(BaseModel):
     cidade: str
     estado: str
     escola: str
+    professor: str
     alunos: List[str]
     
 
