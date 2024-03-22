@@ -1,11 +1,13 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 
 class User(BaseModel):
-    name: str
+    nome: str
     email: str
-    password: str
-    user_type: str
+    senha: str
+    tipo: str
+    turmas: List[str]
+    cidades: List[str]
 
 class UserInDB(User):
     _id: Optional[str] = None

@@ -1,11 +1,13 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 
 class Turma(BaseModel):
-    name: str
-    city: str
-    state: str
-    school: str
+    nome: str
+    cidade: str
+    estado: str
+    escola: str
+    alunos: List[str]
+    
 
 class TurmaInDB(Turma):
     _id: Optional[str] = None
