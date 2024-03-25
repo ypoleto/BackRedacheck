@@ -3,8 +3,9 @@ from typing import Optional, List
 
 class User(BaseModel):
     nome: str
+    username: str
     email: str
-    senha: str
+    password: str
     tipo: str
     cidades: List[str]
 

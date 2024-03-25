@@ -5,10 +5,12 @@ from propostas.routes import router as propostas_router
 from generos.routes import router as generos_router
 from redacoes.routes import router as redacoes_router
 from correcoes.routes import router as correcoes_router
+from auth.routes import router as auth_router
 
 app = FastAPI()
 
 # Montando as rotas de usuário diretamente
+app.include_router(auth_router)
 app.include_router(user_router)
 app.include_router(turmas_router)
 app.include_router(propostas_router)

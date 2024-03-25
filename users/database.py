@@ -1,16 +1,24 @@
 from pymongo import MongoClient
 from bson import ObjectId
 from .models import UserInDB, User
+from passlib.context import CryptContext
 from typing import List
 
 client = MongoClient('mongodb+srv://root:root@projeto.hufetlu.mongodb.net/?retryWrites=true&w=majority&appName=projeto')
 db = client["test"]
 collection = db["users"]
 
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def get_password_hash(password):
+    return pwd_context.hash(password)
+
+
 async def create_user(user: User) -> UserInDB:
     new_user = user.dict()
     result = collection.insert_one(new_user)
     new_user["_id"] = str(result.inserted_id)
+    new_user["hashed_password"] = get_password_hash(new_user["password"])
     return UserInDB(**new_user)
 
 async def list_users() -> List[dict]:
