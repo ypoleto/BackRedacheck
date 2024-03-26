@@ -19,6 +19,7 @@ async def get_user(user_id: str):
 @router.post("/users/")
 async def create_user(user: User = Body(...)):
     new_user = await database.create_user(user)
+    print('aaa', new_user)
     return new_user
 
 @router.put("/users/{user_id}")
@@ -28,3 +29,4 @@ async def update_user(user_id: str, user: User = Body(...)):
 @router.delete("/users/{user_id}")
 async def delete_user(user_id: str):
     return await database.delete_user(user_id)
+

@@ -31,8 +31,6 @@ def get_user(db, username: str):
 
 def authenticate_user(db, username: str, password: str):
     user = get_user(db, username)
-    print(user)
-    
     if not user:
         return False
     if not verify_password(password, user.hashed_password):

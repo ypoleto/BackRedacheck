@@ -16,14 +16,18 @@ def get_password_hash(password):
 
 async def create_user(user: User) -> UserInDB:
     new_user = user.dict()
+    new_user["hashed_password"] = get_password_hash(new_user["password"])
     result = collection.insert_one(new_user)
     new_user["_id"] = str(result.inserted_id)
-    new_user["hashed_password"] = get_password_hash(new_user["password"])
+    print('new_user', new_user)
     return UserInDB(**new_user)
 
 async def list_users() -> List[dict]:
     users = []
     for user in collection.find():
+        # Remover a senha criptografada antes de retornar os dados
+        user.pop("password", None)
+        # user.pop("hashed_password", None)
         user["_id"] = str(user["_id"])
         users.append(user)
     return users
@@ -31,6 +35,9 @@ async def list_users() -> List[dict]:
 async def get_user(user_id: str) -> UserInDB:
     user = collection.find_one({"_id": ObjectId(user_id)})
     if user:
+        # Remover a senha criptografada antes de retornar os dados
+        user.pop("hashed_password", None)
+        user.pop("password", None)
         user["_id"] = str(user["_id"])
         return UserInDB(**user)
 
