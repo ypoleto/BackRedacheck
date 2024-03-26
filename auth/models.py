@@ -17,6 +17,7 @@ class User(BaseModel):
     nome: Optional[str] = None
     disabled: Optional[bool] = None
     tipo: Optional[str]
+    turma: Optional[str]
     cidades: Optional[List[str]]
 
 class UserInDB(User):

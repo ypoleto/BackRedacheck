@@ -1,5 +1,6 @@
 from pymongo import MongoClient
 from bson import ObjectId
+import pymongo
 from .models import PropostaInDB, Proposta
 from typing import List
 
@@ -15,9 +16,16 @@ async def create_proposta(proposta: Proposta) -> PropostaInDB:
     return PropostaInDB(**new_proposta)
 
 
-async def list_propostas() -> List[dict]:
+async def list_propostas(turma: str = None) -> List[dict]:
     propostas = []
-    for proposta in collection.find():
+    query = {} 
+    if turma:
+        query["turma"] = turma  # Adiciona a condição de filtro para a turma especificada
+
+    client = pymongo.MongoClient("mongodb+srv://root:root@projeto.hufetlu.mongodb.net/?retryWrites=true&w=majority&appName=projeto")
+    collection = client.test.propostas
+
+    for proposta in collection.find(query):
         proposta["_id"] = str(proposta["_id"])
         propostas.append(proposta)
     return propostas

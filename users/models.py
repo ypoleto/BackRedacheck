@@ -7,6 +7,7 @@ class User(BaseModel):
     email: str
     password: str
     tipo: str
+    turma: str
     cidades: List[str]
 
 class UserInDB(User):
