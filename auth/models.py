@@ -17,8 +17,8 @@ class User(BaseModel):
     nome: Optional[str] = None
     disabled: Optional[bool] = None
     tipo: Optional[str]
-    turma: Optional[str]
-    cidades: Optional[List[str]]
+    turmas: Optional[List[str]]
+    cidades: Optional[List[int]]
 
 class UserInDB(User):
     hashed_password: str

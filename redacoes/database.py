@@ -2,6 +2,9 @@ from pymongo import MongoClient
 from bson import ObjectId
 from .models import RedacaoInDB, Redacao
 from typing import List
+from propostas.database import get_proposta
+from turmas.database import get_turma
+from users.database import get_user
 
 client = MongoClient('mongodb+srv://root:root@projeto.hufetlu.mongodb.net/?retryWrites=true&w=majority&appName=projeto')
 db = client["test"]
@@ -17,6 +20,15 @@ async def list_redacoes() -> List[dict]:
     redacoes = []
     for redacao in collection.find():
         redacao["_id"] = str(redacao["_id"])
+        
+        aluno_id = redacao["aluno"]
+        aluno = await get_user(aluno_id)
+        redacao["aluno"] = aluno  
+        
+        proposta_id = redacao["proposta"]
+        proposta = await get_proposta(proposta_id)
+        redacao["proposta"] = proposta  
+        
         redacoes.append(redacao)
     return redacoes
 

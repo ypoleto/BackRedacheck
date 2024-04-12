@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional, List
+from turmas.models import TurmaInDB
 
 class User(BaseModel):
     nome: str
@@ -7,8 +8,9 @@ class User(BaseModel):
     email: str
     password: str
     tipo: str
-    turma: str
-    cidades: List[str]
+    turmas: List[str]
+    cidades: List[int]
+    turma: Optional[TurmaInDB] 
 
 class UserInDB(User):
     _id: Optional[str] = None

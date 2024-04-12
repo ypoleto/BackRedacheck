@@ -2,6 +2,7 @@ from pymongo import MongoClient
 from bson import ObjectId
 from .models import UserInDB, User
 from passlib.context import CryptContext
+from turmas.database import get_turma
 from typing import List
 
 client = MongoClient('mongodb+srv://root:root@projeto.hufetlu.mongodb.net/?retryWrites=true&w=majority&appName=projeto')
@@ -25,20 +26,27 @@ async def create_user(user: User) -> UserInDB:
 async def list_users() -> List[dict]:
     users = []
     for user in collection.find():
-        # Remover a senha criptografada antes de retornar os dados
         user.pop("password", None)
-        # user.pop("hashed_password", None)
+        user.pop("hashed_password", None)
         user["_id"] = str(user["_id"])
+        
+        
         users.append(user)
     return users
 
 async def get_user(user_id: str) -> UserInDB:
     user = collection.find_one({"_id": ObjectId(user_id)})
     if user:
-        # Remover a senha criptografada antes de retornar os dados
         user.pop("hashed_password", None)
         user.pop("password", None)
         user["_id"] = str(user["_id"])
+        
+        turma_id = user["turmas"][0]
+        turma = await get_turma(turma_id)
+        print(turma)
+        user["turma"] = turma  
+        
+        user.setdefault("password", "")
         return UserInDB(**user)
 
 async def update_user(user_id: str, user: User) -> dict:

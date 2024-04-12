@@ -26,7 +26,7 @@ async def login_for_access_token(request: Request):
                             detail="Incorrect username or password", headers={"WWW-Authenticate": "Bearer"})
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"username": user.username, "email": user.email, "nome":user.nome, "tipo": user.tipo, "turma": user.turma}, expires_delta=access_token_expires)
+        data={"username": user.username, "email": user.email, "nome":user.nome, "tipo": user.tipo, "turmas": user.turmas}, expires_delta=access_token_expires)
     return {"access_token": access_token, "token_type": "bearer"}
 
 @router.get("/users/me/", response_model=User)

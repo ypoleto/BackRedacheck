@@ -8,12 +8,12 @@ from redacoes.routes import router as redacoes_router
 from correcoes.routes import router as correcoes_router
 from auth.routes import router as auth_router
 
-
 app = FastAPI()
 
 origins = [
     "http://localhost",
-    "http://localhost:3000",  # Origem do frontend
+    "http://localhost:3000",
+    "http://localhost:3001",
 ]
 
 app.add_middleware(
