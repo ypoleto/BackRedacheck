@@ -35,6 +35,12 @@ async def update_turma(turma_id: str, turma: Turma) -> dict:
             "result": TurmaInDB(**updated_turma)
         }
         
+async def update_turma_with_user(turma_id: str, user_id: str) -> None:
+    collection.update_one(
+        {"_id": ObjectId(turma_id)},
+        {"$push": {"alunos": user_id}}
+    )
+    
 async def delete_turma(turma_id: str) -> dict:
     result = collection.delete_one({"_id": ObjectId(turma_id)})
     if result.deleted_count == 1:

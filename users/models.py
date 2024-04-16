@@ -10,7 +10,7 @@ class User(BaseModel):
     tipo: str
     turmas: List[str]
     cidades: List[int]
-    turma: Optional[TurmaInDB] 
+    turma: Optional[str] 
 
 class UserInDB(User):
     _id: Optional[str] = None

@@ -2,7 +2,7 @@ from pymongo import MongoClient
 from bson import ObjectId
 from .models import UserInDB, User
 from passlib.context import CryptContext
-from turmas.database import get_turma
+from turmas.database import get_turma, update_turma_with_user
 from typing import List
 
 client = MongoClient('mongodb+srv://root:root@projeto.hufetlu.mongodb.net/?retryWrites=true&w=majority&appName=projeto')
@@ -13,15 +13,21 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def get_password_hash(password):
     return pwd_context.hash(password)
-
-
+  
+        
 async def create_user(user: User) -> UserInDB:
-    new_user = user.dict()
-    new_user["hashed_password"] = get_password_hash(new_user["password"])
-    result = collection.insert_one(new_user)
-    new_user["_id"] = str(result.inserted_id)
-    print('new_user', new_user)
-    return UserInDB(**new_user)
+    new_user_data = user.model_dump()
+    new_user_data["hashed_password"] = get_password_hash(new_user_data["password"])
+    result = collection.insert_one(new_user_data)
+    new_user_data["_id"] = str(result.inserted_id)
+    
+    # Adicionar o ID do usuário na lista "alunos" na turma correspondente
+    turma_id = new_user_data["turma"]
+    await update_turma_with_user(turma_id, new_user_data["_id"])
+    
+    return UserInDB(**new_user_data)
+
+
 
 async def list_users() -> List[dict]:
     users = []
