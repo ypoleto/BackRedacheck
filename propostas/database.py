@@ -18,18 +18,19 @@ async def create_proposta(proposta: Proposta) -> PropostaInDB:
 
 async def list_propostas(turma: str = None) -> List[dict]:
     propostas = []
-    query = {} 
-    if turma:
-        query["turma"] = turma  # Adiciona a condição de filtro para a turma especificada
+    query = {}
 
     client = pymongo.MongoClient("mongodb+srv://root:root@projeto.hufetlu.mongodb.net/?retryWrites=true&w=majority&appName=projeto")
     collection = client.test.propostas
 
-    for proposta in collection.find(query):
-        proposta["_id"] = str(proposta["_id"])
-        propostas.append(proposta)
-    return propostas
+    if turma:
+        query["turmas"] = {"$in": [turma]}
 
+    for proposta in collection.find(query):
+        proposta["_id"] = str(proposta["_id"]) 
+        propostas.append(proposta)
+
+    return propostas
 
 async def get_proposta(proposta_id: str) -> PropostaInDB:
     proposta = collection.find_one({"_id": ObjectId(proposta_id)})

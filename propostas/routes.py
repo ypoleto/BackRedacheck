@@ -1,12 +1,16 @@
-from fastapi import APIRouter, HTTPException, Body
+from fastapi import APIRouter, HTTPException, Body, Query
 from . import database
 from .models import Proposta, PropostaInDB
 
 router = APIRouter()
 
 @router.get("/propostas/")
-async def list_propostas():
-    return await database.list_propostas()
+async def list_propostas(turma: str = None):
+    return await database.list_propostas(turma)
+
+@router.get("/propostas/")
+async def get_propostas(turma: str = Query(None, description="Filtrar propostas por turma")):
+    return await list_propostas(turma)
 
 @router.get("/propostas/{proposta_id}")
 async def get_proposta(proposta_id: str):
