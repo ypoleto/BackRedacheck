@@ -8,6 +8,7 @@ from redacoes.routes import router as redacoes_router
 from correcoes.routes import router as correcoes_router
 from auth.routes import router as auth_router
 from turmas_has_users.routes import router as turmas_has_users_router
+from users_has_cidades.routes import router as users_has_cidades_router
 
 app = FastAPI()
 
@@ -34,3 +35,4 @@ app.include_router(generos_router)
 app.include_router(redacoes_router)
 app.include_router(correcoes_router)
 app.include_router(turmas_has_users_router)
+app.include_router(users_has_cidades_router)
