@@ -1,57 +1,118 @@
-from pymongo import MongoClient
-from bson import ObjectId
-import pymongo
+import mysql.connector
 from .models import PropostaInDB, Proposta
 from typing import List
 
-client = MongoClient("mongodb+srv://root:root@projeto.hufetlu.mongodb.net/?retryWrites=true&w=majority&appName=projeto")
-db = client["test"]
-collection = db["propostas"]
-
+# Configurações de conexão com o MySQL
+MYSQL_USER = "root"
+MYSQL_PASSWORD = "root"
+MYSQL_HOST = "127.0.0.1"
+MYSQL_PORT = 3306
+MYSQL_DATABASE = "redacheck"
 
 async def create_proposta(proposta: Proposta) -> PropostaInDB:
-    new_proposta = proposta.dict()
-    result = collection.insert_one(new_proposta)
-    new_proposta["_id"] = str(result.inserted_id)
-    return PropostaInDB(**new_proposta)
+    try:
+        cnx = mysql.connector.connect(user=MYSQL_USER, password=MYSQL_PASSWORD,
+                                      host=MYSQL_HOST, port=MYSQL_PORT,
+                                      database=MYSQL_DATABASE)
+        cursor = cnx.cursor(dictionary=True)
 
+        query = ("INSERT INTO propostas (campo1, campo2, campo3) VALUES (%(campo1)s, %(campo2)s, %(campo3)s)")
+        cursor.execute(query, proposta.dict())
+        cnx.commit()
+
+        proposta_id = cursor.lastrowid
+        cursor.close()
+        cnx.close()
+
+        return PropostaInDB(**proposta.dict(), id=str(proposta_id))
+    
+    except mysql.connector.Error as err:
+        print(f"Error: {err}")
+        return None
 
 async def list_propostas(turma: str = None) -> List[dict]:
-    propostas = []
-    query = {}
+    try:
+        cnx = mysql.connector.connect(user=MYSQL_USER, password=MYSQL_PASSWORD,
+                                      host=MYSQL_HOST, port=MYSQL_PORT,
+                                      database=MYSQL_DATABASE)
+        cursor = cnx.cursor(dictionary=True)
 
-    client = pymongo.MongoClient("mongodb+srv://root:root@projeto.hufetlu.mongodb.net/?retryWrites=true&w=majority&appName=projeto")
-    collection = client.test.propostas
+        if turma:
+            query = ("SELECT * FROM propostas WHERE turmas LIKE %(turma)s")
+            cursor.execute(query, {'turma': f'%{turma}%'})
+        else:
+            query = ("SELECT * FROM propostas")
+            cursor.execute(query)
+        
+        propostas = cursor.fetchall()
 
-    if turma:
-        query["turmas"] = {"$in": [turma]}
+        cursor.close()
+        cnx.close()
 
-    for proposta in collection.find(query):
-        proposta["_id"] = str(proposta["_id"]) 
-        propostas.append(proposta)
+        return propostas
 
-    return propostas
+    except mysql.connector.Error as err:
+        print(f"Error: {err}")
+        return []
 
 async def get_proposta(proposta_id: str) -> PropostaInDB:
-    proposta = collection.find_one({"_id": ObjectId(proposta_id)})
-    if proposta:
-        proposta["_id"] = str(proposta["_id"])
-        return PropostaInDB(**proposta)
+    try:
+        cnx = mysql.connector.connect(user=MYSQL_USER, password=MYSQL_PASSWORD,
+                                      host=MYSQL_HOST, port=MYSQL_PORT,
+                                      database=MYSQL_DATABASE)
+        cursor = cnx.cursor(dictionary=True)
 
+        query = ("SELECT * FROM propostas WHERE id = %(id)s")
+        cursor.execute(query, {'id': proposta_id})
+        proposta = cursor.fetchone()
+
+        cursor.close()
+        cnx.close()
+
+        if proposta:
+            return PropostaInDB(**proposta)
+        return None
+
+    except mysql.connector.Error as err:
+        print(f"Error: {err}")
+        return None
 
 async def update_proposta(proposta_id: str, proposta: Proposta) -> dict:
-    result = collection.update_one(
-        {"_id": ObjectId(proposta_id)}, {"$set": proposta.dict()}
-    )
-    if result.modified_count == 1:
-        updated_proposta = collection.find_one({"_id": ObjectId(proposta_id)})
-        return {
-            "message": "Proposta atualizada com sucesso",
-            "result": PropostaInDB(**updated_proposta),
-        }
+    try:
+        cnx = mysql.connector.connect(user=MYSQL_USER, password=MYSQL_PASSWORD,
+                                      host=MYSQL_HOST, port=MYSQL_PORT,
+                                      database=MYSQL_DATABASE)
+        cursor = cnx.cursor(dictionary=True)
 
+        query = ("UPDATE propostas SET campo1 = %(campo1)s, campo2 = %(campo2)s, campo3 = %(campo3)s WHERE id = %(id)s")
+        cursor.execute(query, proposta.dict())
+        cnx.commit()
+
+        cursor.close()
+        cnx.close()
+
+        return {"message": "Proposta atualizada com sucesso"}
+    
+    except mysql.connector.Error as err:
+        print(f"Error: {err}")
+        return {"message": "Erro ao atualizar proposta"}
 
 async def delete_proposta(proposta_id: str) -> dict:
-    result = collection.delete_one({"_id": ObjectId(proposta_id)})
-    if result.deleted_count == 1:
+    try:
+        cnx = mysql.connector.connect(user=MYSQL_USER, password=MYSQL_PASSWORD,
+                                      host=MYSQL_HOST, port=MYSQL_PORT,
+                                      database=MYSQL_DATABASE)
+        cursor = cnx.cursor(dictionary=True)
+
+        query = ("DELETE FROM propostas WHERE id = %(id)s")
+        cursor.execute(query, {'id': proposta_id})
+        cnx.commit()
+
+        cursor.close()
+        cnx.close()
+
         return {"message": "Proposta deletada com sucesso"}
+    
+    except mysql.connector.Error as err:
+        print(f"Error: {err}")
+        return {"message": "Erro ao deletar proposta"}

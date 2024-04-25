@@ -1,48 +1,113 @@
-from pymongo import MongoClient
-from bson import ObjectId
+import mysql.connector
 from .models import GeneroInDB, Genero
 from typing import List
 
-client = MongoClient("mongodb+srv://root:root@projeto.hufetlu.mongodb.net/?retryWrites=true&w=majority&appName=projeto")
-db = client["test"]
-collection = db["generos"]
-
+# Configurações de conexão com o MySQL
+MYSQL_USER = "root"
+MYSQL_PASSWORD = "root"
+MYSQL_HOST = "127.0.0.1"
+MYSQL_PORT = 3306
+MYSQL_DATABASE = "redacheck"
 
 async def create_genero(genero: Genero) -> GeneroInDB:
-    new_genero = genero.dict()
-    result = collection.insert_one(new_genero)
-    new_genero["_id"] = str(result.inserted_id)
-    return GeneroInDB(**new_genero)
+    try:
+        cnx = mysql.connector.connect(user=MYSQL_USER, password=MYSQL_PASSWORD,
+                                      host=MYSQL_HOST, port=MYSQL_PORT,
+                                      database=MYSQL_DATABASE)
+        cursor = cnx.cursor(dictionary=True)
 
+        query = ("INSERT INTO generos (nome) VALUES (%(nome)s)")
+        cursor.execute(query, genero.dict())
+        cnx.commit()
+
+        genero_id = cursor.lastrowid
+        cursor.close()
+        cnx.close()
+
+        return GeneroInDB(**genero.dict(), id=str(genero_id))
+    
+    except mysql.connector.Error as err:
+        print(f"Error: {err}")
+        return None
 
 async def list_generos() -> List[dict]:
-    generos = []
-    for genero in collection.find():
-        genero["_id"] = str(genero["_id"])
-        generos.append(genero)
-    return generos
+    try:
+        cnx = mysql.connector.connect(user=MYSQL_USER, password=MYSQL_PASSWORD,
+                                      host=MYSQL_HOST, port=MYSQL_PORT,
+                                      database=MYSQL_DATABASE)
+        cursor = cnx.cursor(dictionary=True)
 
+        query = ("SELECT * FROM generos")
+        cursor.execute(query)
+        generos = cursor.fetchall()
+
+        cursor.close()
+        cnx.close()
+
+        return generos
+
+    except mysql.connector.Error as err:
+        print(f"Error: {err}")
+        return []
 
 async def get_genero(genero_id: str) -> GeneroInDB:
-    genero = collection.find_one({"_id": ObjectId(genero_id)})
-    if genero:
-        genero["_id"] = str(genero["_id"])
-        return GeneroInDB(**genero)
+    try:
+        cnx = mysql.connector.connect(user=MYSQL_USER, password=MYSQL_PASSWORD,
+                                      host=MYSQL_HOST, port=MYSQL_PORT,
+                                      database=MYSQL_DATABASE)
+        cursor = cnx.cursor(dictionary=True)
 
+        query = ("SELECT * FROM generos WHERE genero_id = %(genero_id)s")
+        cursor.execute(query, {'genero_id': genero_id})
+        genero = cursor.fetchone()
+
+        cursor.close()
+        cnx.close()
+
+        if genero:
+            return GeneroInDB(**genero)
+        return None
+
+    except mysql.connector.Error as err:
+        print(f"Error: {err}")
+        return None
 
 async def update_genero(genero_id: str, genero: Genero) -> dict:
-    result = collection.update_one(
-        {"_id": ObjectId(genero_id)}, {"$set": genero.dict()}
-    )
-    if result.modified_count == 1:
-        updated_genero = collection.find_one({"_id": ObjectId(genero_id)})
-        return {
-            "message": "Genero atualizado com sucesso",
-            "result": GeneroInDB(**updated_genero),
-        }
+    try:
+        cnx = mysql.connector.connect(user=MYSQL_USER, password=MYSQL_PASSWORD,
+                                      host=MYSQL_HOST, port=MYSQL_PORT,
+                                      database=MYSQL_DATABASE)
+        cursor = cnx.cursor(dictionary=True)
 
+        query = ("UPDATE generos SET nome = %s WHERE genero_id = %s")
+        cursor.execute(query, (genero.nome, genero_id))
+        cnx.commit()
+
+        cursor.close()
+        cnx.close()
+
+        return {"message": "Genero atualizado com sucesso"}
+    
+    except mysql.connector.Error as err:
+        print(f"Error: {err}")
+        return {"message": "Erro ao atualizar genero"}
 
 async def delete_genero(genero_id: str) -> dict:
-    result = collection.delete_one({"_id": ObjectId(genero_id)})
-    if result.deleted_count == 1:
+    try:
+        cnx = mysql.connector.connect(user=MYSQL_USER, password=MYSQL_PASSWORD,
+                                      host=MYSQL_HOST, port=MYSQL_PORT,
+                                      database=MYSQL_DATABASE)
+        cursor = cnx.cursor(dictionary=True)
+
+        query = ("DELETE FROM generos WHERE genero_id = %(genero_id)s")
+        cursor.execute(query, {'genero_id': genero_id})
+        cnx.commit()
+
+        cursor.close()
+        cnx.close()
+
         return {"message": "Genero deletado com sucesso"}
+    
+    except mysql.connector.Error as err:
+        print(f"Error: {err}")
+        return {"message": "Erro ao deletar genero"}

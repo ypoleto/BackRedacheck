@@ -1,16 +1,14 @@
 from pydantic import BaseModel
 from typing import Optional, List
-from turmas.models import TurmaInDB
 
 class User(BaseModel):
     nome: str
-    username: str
     email: str
-    password: str
+    password: Optional[str] = None
     tipo: str
-    turmas: List[str]
-    cidades: List[int]
-    turma: Optional[str] 
+    username: str
+    turmas: Optional[str] = None
+    cidades: Optional[str] = None
 
 class UserInDB(User):
     _id: Optional[str] = None

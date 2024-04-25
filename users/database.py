@@ -1,66 +1,173 @@
-from pymongo import MongoClient
-from bson import ObjectId
+import mysql.connector
 from .models import UserInDB, User
 from passlib.context import CryptContext
-from turmas.database import get_turma, update_turma_with_user
+from turmas.database import get_turma
 from typing import List
 
-client = MongoClient('mongodb+srv://root:root@projeto.hufetlu.mongodb.net/?retryWrites=true&w=majority&appName=projeto')
-db = client["test"]
-collection = db["users"]
+# Configurações de conexão com o MySQL
+MYSQL_USER = "root"
+MYSQL_PASSWORD = "root"
+MYSQL_HOST = "127.0.0.1"
+MYSQL_PORT = 3306
+MYSQL_DATABASE = "redacheck"
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def get_password_hash(password):
     return pwd_context.hash(password)
+
   
-        
 async def create_user(user: User) -> UserInDB:
-    new_user_data = user.model_dump()
-    new_user_data["hashed_password"] = get_password_hash(new_user_data["password"])
-    result = collection.insert_one(new_user_data)
-    new_user_data["_id"] = str(result.inserted_id)
+    try:
+        cnx = mysql.connector.connect(user=MYSQL_USER, password=MYSQL_PASSWORD,
+                                      host=MYSQL_HOST, port=MYSQL_PORT,
+                                      database=MYSQL_DATABASE)
+        cursor = cnx.cursor(dictionary=True)
+
+        new_user_data = user.model_dump()
+        new_user_data["password"] = get_password_hash(new_user_data["password"])
+
+        # Inserir usuário na tabela de usuários
+        user_query = ("INSERT INTO users (username, email, password, nome, tipo) VALUES "
+                      "(%(username)s, %(email)s, %(password)s, %(nome)s, %(tipo)s)")
+        cursor.execute(user_query, new_user_data)
+        cnx.commit()
+
+        # Obter o ID do usuário recém-inserido
+        user_id = cursor.lastrowid
+
+        # Processar cidades e turmas separadas por vírgula
+        cidades = [int(city_id) for city_id in new_user_data["cidades"].split(",")]
+        turmas = [int(turma_id) for turma_id in new_user_data["turmas"].split(",")]
+
+        # Inserir relações nas tabelas users_has_cidades e turmas_has_users usando executemany
+        cidades_values = [(city_id, user_id) for city_id in cidades]  # Adaptado para {cidade, users_user_id}
+        cidades_query = ("INSERT INTO users_has_cidades (cidade4[], users_user_id) VALUES "
+                         "(%s, %s)")
+        cursor.executemany(cidades_query, cidades_values)
+
+        turmas_values = [(user_id, turma_id) for turma_id in turmas]  # Adaptado para {users_user_id, turmas_turma_id}
+        turmas_query = ("INSERT INTO turmas_has_users (users_user_id, turmas_turma_id) VALUES "
+                        "(%s, %s)")
+        cursor.executemany(turmas_query, turmas_values)
+
+        cnx.commit()
+        cursor.close()
+        cnx.close()
+
+        return UserInDB(**new_user_data, id=str(user_id))
     
-    # Adicionar o ID do usuário na lista "alunos" na turma correspondente
-    turma_id = new_user_data["turma"]
-    await update_turma_with_user(turma_id, new_user_data["_id"])
-    
-    return UserInDB(**new_user_data)
+    except mysql.connector.Error as err:
+        print(f"Error: {err}")
+        return None
+
 
 
 
 async def list_users() -> List[dict]:
-    users = []
-    for user in collection.find():
-        user.pop("password", None)
-        user.pop("hashed_password", None)
-        user["_id"] = str(user["_id"])
-        
-        
-        users.append(user)
-    return users
+    try:
+        cnx = mysql.connector.connect(user=MYSQL_USER, password=MYSQL_PASSWORD,
+                                      host=MYSQL_HOST, port=MYSQL_PORT,
+                                      database=MYSQL_DATABASE)
+        cursor = cnx.cursor(dictionary=True)
+
+        query = ("SELECT * FROM users")
+        cursor.execute(query)
+        users = cursor.fetchall()
+
+        cursor.close()
+        cnx.close()
+
+        return users
+
+    except mysql.connector.Error as err:
+        print(f"Error: {err}")
+        return []
 
 async def get_user(user_id: str) -> UserInDB:
-    user = collection.find_one({"_id": ObjectId(user_id)})
-    if user:
-        user.pop("hashed_password", None)
-        user.pop("password", None)
-        user["_id"] = str(user["_id"])
-        
-        turma_id = user["turmas"][0]
-        turma = await get_turma(turma_id)
-        print(turma)
-        user["turma"] = turma  
-        
-        user.setdefault("password", "")
-        return UserInDB(**user)
+    try:
+        cnx = mysql.connector.connect(user=MYSQL_USER, password=MYSQL_PASSWORD,
+                                      host=MYSQL_HOST, port=MYSQL_PORT,
+                                      database=MYSQL_DATABASE)
+        cursor = cnx.cursor(dictionary=True)
+
+        query = ("SELECT * FROM users WHERE id = %(id)s")
+        cursor.execute(query, {'id': user_id})
+        user = cursor.fetchone()
+
+        cursor.close()
+        cnx.close()
+
+        if user:
+            user_id = user["id"]
+            user.pop("id", None)
+            user["turma"] = await get_turma(user["turma_id"])
+            return UserInDB(**user, id=user_id)
+        return None
+
+    except mysql.connector.Error as err:
+        print(f"Error: {err}")
+        return None
 
 async def update_user(user_id: str, user: User) -> dict:
-    result = collection.update_one({"_id": ObjectId(user_id)}, {"$set": user.dict()})
-    if result.modified_count == 1:
-        return {"message": "User updated successfully"}
+    user_dict = user.dict()
+    
+    try:
+        cnx = mysql.connector.connect(user=MYSQL_USER, password=MYSQL_PASSWORD,
+                                      host=MYSQL_HOST, port=MYSQL_PORT,
+                                      database=MYSQL_DATABASE)
+        cursor = cnx.cursor(dictionary=True)
+        query = ("UPDATE users SET nome=%(nome)s, username=%(username)s, tipo=%(tipo)s WHERE user_id=%(user_id)s")
+        user_dict["user_id"] = user_id  # Adicionando o ID da user ao dicionário
+        cursor.execute(query, user_dict)
+        cnx.commit()
+        cursor.close()
+        cnx.close()
+        return {"message": "User atualizado com sucesso"}
+    
+    except mysql.connector.Error as err:
+        print(f"Error: {err}")
+        return None
+
+async def update_user_password(user_id: str, new_password: str) -> dict:
+    try:
+        cnx = mysql.connector.connect(user=MYSQL_USER, password=MYSQL_PASSWORD,
+                                      host=MYSQL_HOST, port=MYSQL_PORT,
+                                      database=MYSQL_DATABASE)
+        cursor = cnx.cursor(dictionary=True)
+        
+        hashed_password = get_password_hash(new_password)
+        
+        query = ("UPDATE users SET password=%s WHERE id=%s")
+        
+        cursor.execute(query, (hashed_password, user_id))
+        
+        cnx.commit()
+        cursor.close()
+        cnx.close()
+        
+        return {"message": "Senha do usuário atualizada com sucesso"}
+    
+    except mysql.connector.Error as err:
+        print(f"Error: {err}")
+        return {"message": "Erro ao atualizar a senha do usuário"}
 
 async def delete_user(user_id: str) -> dict:
-    result = collection.delete_one({"_id": ObjectId(user_id)})
-    if result.deleted_count == 1:
+    try:
+        cnx = mysql.connector.connect(user=MYSQL_USER, password=MYSQL_PASSWORD,
+                                      host=MYSQL_HOST, port=MYSQL_PORT,
+                                      database=MYSQL_DATABASE)
+        cursor = cnx.cursor(dictionary=True)
+
+        query = ("DELETE FROM users WHERE user_id = %(id)s")
+        cursor.execute(query, {'id': user_id})
+        cnx.commit()
+
+        cursor.close()
+        cnx.close()
+
         return {"message": "User deleted successfully"}
+    
+    except mysql.connector.Error as err:
+        print(f"Error: {err}")
+        return {"message": "Erro ao deletar usuário"}

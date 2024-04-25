@@ -1,47 +1,119 @@
-from pymongo import MongoClient
-from bson import ObjectId
+import mysql.connector
 from .models import TurmaInDB, Turma
 from typing import List
 
-client = MongoClient('mongodb+srv://root:root@projeto.hufetlu.mongodb.net/?retryWrites=true&w=majority&appName=projeto')
-db = client["test"]
-collection = db["turmas"]
+# Configurações de conexão com o MySQL
+MYSQL_USER = "root"
+MYSQL_PASSWORD = "root"
+MYSQL_HOST = "127.0.0.1"
+MYSQL_PORT = 3306
+MYSQL_DATABASE = "redacheck"
 
 async def create_turma(turma: Turma) -> TurmaInDB:
-    new_turma = turma.dict()
-    result = collection.insert_one(new_turma)
-    new_turma["_id"] = str(result.inserted_id)
-    return TurmaInDB(**new_turma)
+    turma_dict = turma.dict()
+    try:
+        cnx = mysql.connector.connect(user=MYSQL_USER, password=MYSQL_PASSWORD,
+                                      host=MYSQL_HOST, port=MYSQL_PORT,
+                                      database=MYSQL_DATABASE)
+        cursor = cnx.cursor(dictionary=True)
+
+        query = ("INSERT INTO turmas (nome) VALUES (%(nome)s)")
+        cursor.execute(query, turma_dict)
+        cnx.commit()
+
+        turma_id = cursor.lastrowid
+        cursor.close()
+        cnx.close()
+
+        return {"id": turma_id, **turma_dict}
+    
+    except mysql.connector.Error as err:
+        print(f"Error: {err}")
+        return None
+
 
 async def list_turmas() -> List[dict]:
-    turmas = []
-    for turma in collection.find():
-        turma["_id"] = str(turma["_id"])
-        turmas.append(turma)
-    return turmas
+    try:
+        cnx = mysql.connector.connect(user=MYSQL_USER, password=MYSQL_PASSWORD,
+                                      host=MYSQL_HOST, port=MYSQL_PORT,
+                                      database=MYSQL_DATABASE)
+        cursor = cnx.cursor(dictionary=True)
+
+        query = ("SELECT * FROM turmas")
+        cursor.execute(query)
+        turmas = cursor.fetchall()
+
+        cursor.close()
+        cnx.close()
+
+        return turmas
+
+    except mysql.connector.Error as err:
+        print(f"Error: {err}")
+        return []
 
 async def get_turma(turma_id: str) -> TurmaInDB:
-    turma = collection.find_one({"_id": ObjectId(turma_id)})
-    if turma:
-        turma["_id"] = str(turma["_id"])
-        return TurmaInDB(**turma)
+    try:
+        cnx = mysql.connector.connect(user=MYSQL_USER, password=MYSQL_PASSWORD,
+                                      host=MYSQL_HOST, port=MYSQL_PORT,
+                                      database=MYSQL_DATABASE)
+        cursor = cnx.cursor(dictionary=True)
+
+        query = ("SELECT * FROM turmas WHERE turma_id = %(turma_id)s")
+        cursor.execute(query, {'turma_id': turma_id})
+        turma = cursor.fetchone()
+
+        cursor.close()
+        cnx.close()
+
+        if turma:
+            return turma
+        return None
+
+    except mysql.connector.Error as err:
+        print(f"Error: {err}")
+        return None
 
 async def update_turma(turma_id: str, turma: Turma) -> dict:
-    result = collection.update_one({"_id": ObjectId(turma_id)}, {"$set": turma.dict()})
-    if result.modified_count == 1:        
-        updated_turma = collection.find_one({"_id": ObjectId(turma_id)})
-        return {
-            "message": "Turma atualizada com sucesso", 
-            "result": TurmaInDB(**updated_turma)
-        }
-        
-async def update_turma_with_user(turma_id: str, user_id: str) -> None:
-    collection.update_one(
-        {"_id": ObjectId(turma_id)},
-        {"$push": {"alunos": user_id}}
-    )
+    turma_dict = turma.dict()
     
+    try:
+        cnx = mysql.connector.connect(user=MYSQL_USER, password=MYSQL_PASSWORD,
+                                      host=MYSQL_HOST, port=MYSQL_PORT,
+                                      database=MYSQL_DATABASE)
+        cursor = cnx.cursor(dictionary=True)
+
+        query = ("UPDATE turmas SET nome=%(nome)s WHERE turma_id=%(turma_id)s")
+        turma_dict["turma_id"] = turma_id  # Adicionando o ID da turma ao dicionário
+        cursor.execute(query, turma_dict)
+        cnx.commit()
+
+        cursor.close()
+        cnx.close()
+
+        return {"message": "Turma atualizada com sucesso"}
+    
+    except mysql.connector.Error as err:
+        print(f"Error: {err}")
+        return None
+
+
 async def delete_turma(turma_id: str) -> dict:
-    result = collection.delete_one({"_id": ObjectId(turma_id)})
-    if result.deleted_count == 1:
-        return {"message": "Turma deletada com sucesso"}
+    try:
+        cnx = mysql.connector.connect(user=MYSQL_USER, password=MYSQL_PASSWORD,
+                                      host=MYSQL_HOST, port=MYSQL_PORT,
+                                      database=MYSQL_DATABASE)
+        cursor = cnx.cursor(dictionary=True)
+
+        query = ("DELETE FROM turmas WHERE turma_id = %(turma_id)s")
+        cursor.execute(query, {'turma_id': turma_id})
+        cnx.commit()
+
+        cursor.close()
+        cnx.close()
+
+        return {"message": "Turma deleted successfully"}
+    
+    except mysql.connector.Error as err:
+        print(f"Error: {err}")
+        return {"message": "Erro ao deletar turma"}
