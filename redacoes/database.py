@@ -19,8 +19,15 @@ async def create_redacao(redacao: Redacao) -> RedacaoInDB:
                                       database=MYSQL_DATABASE)
         cursor = cnx.cursor(dictionary=True)
 
-        query = ("INSERT INTO redacoes (campo1, campo2, campo3) VALUES (%(campo1)s, %(campo2)s, %(campo3)s)")
-        cursor.execute(query, redacao.dict())
+        query = ("INSERT INTO redacoes (texto, propostas_proposta_id, users_user_id) "
+                 "VALUES (%s, %s, %s)")
+        
+        # Adapte os valores dos campos e adicione os valores das chaves estrangeiras
+        redacao_data = redacao.dict()
+        redacao_data['propostas_proposta_id'] = redacao_data.pop('proposta_id')
+        redacao_data['users_user_id'] = redacao_data.pop('user_id')
+
+        cursor.execute(query, (redacao_data['texto'], redacao_data['propostas_proposta_id'], redacao_data['users_user_id']))
         cnx.commit()
 
         redacao_id = cursor.lastrowid
@@ -47,15 +54,6 @@ async def list_redacoes() -> List[dict]:
         cursor.close()
         cnx.close()
 
-        for redacao in redacoes:
-            aluno_id = redacao["aluno"]
-            aluno = await get_user(aluno_id)
-            redacao["aluno"] = aluno  
-
-            proposta_id = redacao["proposta"]
-            proposta = await get_proposta(proposta_id)
-            redacao["proposta"] = proposta  
-
         return redacoes
 
     except mysql.connector.Error as err:
@@ -69,7 +67,8 @@ async def get_redacao(redacao_id: str) -> RedacaoInDB:
                                       database=MYSQL_DATABASE)
         cursor = cnx.cursor(dictionary=True)
 
-        query = ("SELECT * FROM redacoes WHERE id = %(id)s")
+        query = ("SELECT propostas_proposta_id AS proposta_id, users_user_id AS user_id, texto "
+                 "FROM redacoes WHERE redacao_id = %(id)s")
         cursor.execute(query, {'id': redacao_id})
         redacao = cursor.fetchone()
 
@@ -77,20 +76,14 @@ async def get_redacao(redacao_id: str) -> RedacaoInDB:
         cnx.close()
 
         if redacao:
-            aluno_id = redacao["aluno"]
-            aluno = await get_user(aluno_id)
-            redacao["aluno"] = aluno  
-
-            proposta_id = redacao["proposta"]
-            proposta = await get_proposta(proposta_id)
-            redacao["proposta"] = proposta  
-
             return RedacaoInDB(**redacao)
         return None
 
     except mysql.connector.Error as err:
         print(f"Error: {err}")
         return None
+
+
 
 async def update_redacao(redacao_id: str, redacao: Redacao) -> dict:
     try:
@@ -99,8 +92,15 @@ async def update_redacao(redacao_id: str, redacao: Redacao) -> dict:
                                       database=MYSQL_DATABASE)
         cursor = cnx.cursor(dictionary=True)
 
-        query = ("UPDATE redacoes SET campo1 = %(campo1)s, campo2 = %(campo2)s, campo3 = %(campo3)s WHERE id = %(id)s")
-        cursor.execute(query, redacao.dict())
+        query = ("UPDATE redacoes SET texto = %(texto)s, propostas_proposta_id = %(proposta_id)s, users_user_id = %(user_id)s WHERE redacao_id = %(redacao_id)s")
+        
+        # Convert Redacao object to dictionary
+        redacao_data = redacao.dict()
+        # Add redacao_id to the dictionary
+        redacao_data['redacao_id'] = redacao_id
+        
+        # Execute the query with the dictionary of parameters
+        cursor.execute(query, redacao_data)
         cnx.commit()
 
         cursor.close()
@@ -119,7 +119,7 @@ async def delete_redacao(redacao_id: str) -> dict:
                                       database=MYSQL_DATABASE)
         cursor = cnx.cursor(dictionary=True)
 
-        query = ("DELETE FROM redacoes WHERE id = %(id)s")
+        query = ("DELETE FROM redacoes WHERE redacao_id = %(id)s")
         cursor.execute(query, {'id': redacao_id})
         cnx.commit()
 

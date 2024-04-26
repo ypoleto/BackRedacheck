@@ -9,10 +9,12 @@ class Proposta(BaseModel):
     data_aplicacao: datetime
     data_entrega: datetime
     dificuldade: str
-    genero: int
-    professor: int
+    genero_id: int
+    user_id: int
     
 
 class PropostaInDB(Proposta):
     _id: Optional[str] = None
+    genero_id: Optional[int] = None
+    user_id: Optional[int] = None
     

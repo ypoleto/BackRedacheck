@@ -1,11 +1,11 @@
 from pydantic import BaseModel
 from typing import Optional, List
 
-class Redacao(BaseModel):
-    texto: str
+class PropostaHasTurmas(BaseModel):
     proposta_id: int
-    user_id: int
+    turma_id: int
 
-class RedacaoInDB(Redacao):
+class PropostaHasTurmasInDB(PropostaHasTurmas):
     _id: Optional[str] = None
+
     
