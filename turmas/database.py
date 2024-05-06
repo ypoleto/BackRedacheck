@@ -10,26 +10,27 @@ MYSQL_PORT = 3306
 MYSQL_DATABASE = "redacheck"
 
 async def create_turma(turma: Turma) -> TurmaInDB:
-    turma_dict = turma.dict()
     try:
         cnx = mysql.connector.connect(user=MYSQL_USER, password=MYSQL_PASSWORD,
                                       host=MYSQL_HOST, port=MYSQL_PORT,
                                       database=MYSQL_DATABASE)
         cursor = cnx.cursor(dictionary=True)
 
-        query = ("INSERT INTO turmas (nome) VALUES (%(nome)s)")
-        cursor.execute(query, turma_dict)
+        query = ("INSERT INTO turmas (nome, professor) VALUES (%(nome)s, %(professor)s)")
+        cursor.execute(query, turma.dict())
         cnx.commit()
 
         turma_id = cursor.lastrowid
         cursor.close()
         cnx.close()
 
-        return {"id": turma_id, **turma_dict}
+        return TurmaInDB(**turma.dict(), id=str(turma_id))
     
     except mysql.connector.Error as err:
         print(f"Error: {err}")
         return None
+
+
 
 
 async def list_turmas() -> List[dict]:
@@ -83,7 +84,7 @@ async def update_turma(turma_id: str, turma: Turma) -> dict:
                                       database=MYSQL_DATABASE)
         cursor = cnx.cursor(dictionary=True)
 
-        query = ("UPDATE turmas SET nome=%(nome)s WHERE turma_id=%(turma_id)s")
+        query = ("UPDATE turmas SET nome=%(nome)s, professor=%(professor)s WHERE turma_id=%(turma_id)s")
         turma_dict["turma_id"] = turma_id  # Adicionando o ID da turma ao dicionário
         cursor.execute(query, turma_dict)
         cnx.commit()
