@@ -12,13 +12,13 @@ class TokenData(BaseModel):
     username: str or None = None # type: ignore
 
 class User(BaseModel):
+    user_id: int
     username: str
-    email: Optional[str] = None
-    nome: Optional[str] = None
-    disabled: Optional[bool] = None
-    tipo: Optional[str]
-    turmas: Optional[List[str]]
-    cidades: Optional[List[int]]
+    email: str
+    nome: str
+    tipo: str
+    turmas: List[str] = []
+    cidades: List[str] = []
 
 class UserInDB(User):
     hashed_password: str

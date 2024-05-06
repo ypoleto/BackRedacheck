@@ -37,8 +37,15 @@ async def create_user(user: User) -> UserInDB:
         user_id = cursor.lastrowid
 
         # Processar cidades e turmas separadas por vírgula
-        cidades = [int(city_id) for city_id in new_user_data["cidades"].split(",")]
-        turmas = [int(turma_id) for turma_id in new_user_data["turmas"].split(",")]
+       # Convertendo IDs das cidades em inteiros
+        cidades = []
+        if new_user_data["cidades"]:
+            cidades = [int(city_id) for city_id in new_user_data["cidades"].split(",")]
+
+        # Convertendo IDs das turmas em inteiros
+        turmas = []
+        if new_user_data["turmas"]:
+            turmas = [int(turma_id) for turma_id in new_user_data["turmas"].split(",")]
 
         # Inserir relações nas tabelas users_has_cidades e turmas_has_users usando executemany
         cidades_values = [(city_id, user_id) for city_id in cidades]  # Adaptado para {cidade, users_user_id}

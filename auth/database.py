@@ -44,7 +44,7 @@ def get_user(username: str):
         cursor = cnx.cursor(dictionary=True)
 
         # Consulta para obter o usuário pelo nome de usuário
-        query = ("SELECT id, username, hashed_password, disabled FROM users WHERE username = %(username)s")
+        query = ("SELECT user_id, username, hashed_password, email, tipo FROM users WHERE username = %(username)s")
         cursor.execute(query, {'username': username})
         user_data = cursor.fetchone()
 

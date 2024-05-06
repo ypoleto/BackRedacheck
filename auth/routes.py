@@ -2,6 +2,7 @@ from fastapi.security import OAuth2PasswordBearer
 from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 import jwt
+import bcrypt
 import mysql.connector
 from .models import Token, User
 from .database import ALGORITHM, SECRET_KEY, authenticate_user, create_access_token, get_current_active_user, ACCESS_TOKEN_EXPIRE_MINUTES
@@ -60,15 +61,18 @@ def authenticate_user(username: str, password: str):
                                       database=MYSQL_DATABASE)
         cursor = cnx.cursor(dictionary=True)
 
-        query = ("SELECT id, username, email, nome, tipo, turmas FROM users WHERE username = %(username)s AND password = %(password)s")
-        cursor.execute(query, {'username': username, 'password': password})
+        query = ("SELECT user_id, username, email, nome, tipo, password FROM users WHERE username = %(username)s")
+        cursor.execute(query, {'username': username})
         user_data = cursor.fetchone()
 
         cursor.close()
         cnx.close()
 
         if user_data:
-            return User(**user_data)
+            # Verificar se a senha fornecida corresponde ao hash armazenado no banco de dados
+            if bcrypt.checkpw(password.encode('utf-8'), user_data['password'].encode('utf-8')):
+                # Se a senha corresponder, retornar os dados do usuário
+                return User(**user_data)
         return None
 
     except mysql.connector.Error as err:
