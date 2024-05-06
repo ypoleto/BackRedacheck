@@ -1,3 +1,4 @@
+from typing import Optional
 from fastapi import APIRouter, HTTPException, Body
 from . import database
 from .models import UsersHasCidades, UsersHasCidadesInDB
@@ -5,8 +6,11 @@ from .models import UsersHasCidades, UsersHasCidadesInDB
 router = APIRouter()
 
 @router.get("/users_cidades/")
-async def list_users_has_cidades():
-    return await database.list_users_has_cidades()
+async def list_users_has_cidades(user_id: Optional[int] = None):
+    if user_id is not None:
+        return await database.list_users_has_cidades(user_id)
+    else:
+        return await database.list_users_has_cidades()
 
 @router.get("/users_cidades/{users_has_cidades_id}")
 async def get_user_has_cidades(users_has_cidades_id: int):

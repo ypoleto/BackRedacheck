@@ -1,6 +1,6 @@
 import mysql.connector
 from .models import UsersHasCidadesInDB, UsersHasCidades
-from typing import List
+from typing import List, Optional
 
 MYSQL_USER = "root"
 MYSQL_PASSWORD = "root"
@@ -32,17 +32,21 @@ async def create_user_has_cidade(user_has_cidades: UsersHasCidades) -> UsersHasC
         return None
 
 
-async def list_users_has_cidades() -> List[dict]:
+async def list_users_has_cidades(user_id: Optional[int] = None) -> List[dict]:
     try:
         cnx = mysql.connector.connect(user=MYSQL_USER, password=MYSQL_PASSWORD,
                                       host=MYSQL_HOST, port=MYSQL_PORT,
                                       database=MYSQL_DATABASE)
         cursor = cnx.cursor(dictionary=True)
 
-        query = ("SELECT * FROM users_has_cidades")
-        cursor.execute(query)
+        if user_id is not None:
+            query = ("SELECT * FROM users_has_cidades WHERE users_user_id = %s")
+            cursor.execute(query, (user_id,))
+        else:
+            query = ("SELECT * FROM users_has_cidades")
+            cursor.execute(query)
+
         cidades_users = cursor.fetchall()
-        print(cidades_users)
 
         cursor.close()
         cnx.close()

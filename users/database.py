@@ -37,37 +37,31 @@ async def create_user(user: User) -> UserInDB:
         user_id = cursor.lastrowid
 
         # Processar cidades e turmas separadas por vírgula
-       # Convertendo IDs das cidades em inteiros
+        # Convertendo IDs das cidades em inteiros
         cidades = []
         if new_user_data["cidades"]:
             cidades = [int(city_id) for city_id in new_user_data["cidades"].split(",")]
 
-        # Convertendo IDs das turmas em inteiros
-        turmas = []
-        if new_user_data["turmas"]:
-            turmas = [int(turma_id) for turma_id in new_user_data["turmas"].split(",")]
-
-        # Inserir relações nas tabelas users_has_cidades e turmas_has_users usando executemany
-        cidades_values = [(city_id, user_id) for city_id in cidades]  # Adaptado para {cidade, users_user_id}
-        cidades_query = ("INSERT INTO users_has_cidades (cidade4[], users_user_id) VALUES "
-                         "(%s, %s)")
-        cursor.executemany(cidades_query, cidades_values)
-
-        turmas_values = [(user_id, turma_id) for turma_id in turmas]  # Adaptado para {users_user_id, turmas_turma_id}
-        turmas_query = ("INSERT INTO turmas_has_users (users_user_id, turmas_turma_id) VALUES "
-                        "(%s, %s)")
-        cursor.executemany(turmas_query, turmas_values)
+        # Inserir relações nas tabelas users_has_cidades
+        for cidade_id in cidades:
+            cidade_user_relation = {
+                "cidade_id": cidade_id,
+                "user_id": user_id
+            }
+            cidade_user_query = ("INSERT INTO users_has_cidades (cidade, users_user_id) VALUES "
+                                 "(%(cidade_id)s, %(user_id)s)")
+            cursor.execute(cidade_user_query, cidade_user_relation)
 
         cnx.commit()
         cursor.close()
         cnx.close()
 
         return UserInDB(**new_user_data, id=str(user_id))
-    
-    except mysql.connector.Error as err:
-        print(f"Error: {err}")
-        return None
 
+    except mysql.connector.Error as err:
+        # Trate a exceção aqui
+        print("Erro ao criar usuário:", err)
+        raise
 
 
 
