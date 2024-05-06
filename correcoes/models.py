@@ -2,7 +2,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 
 class Correcao(BaseModel):
-    redacao: int
+    redacao_id: int
     comentarios: str
     nota: int
 

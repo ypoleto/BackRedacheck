@@ -16,8 +16,13 @@ async def create_correcao(correcao: Correcao) -> CorrecaoInDB:
                                       database=MYSQL_DATABASE)
         cursor = cnx.cursor(dictionary=True)
 
-        query = ("INSERT INTO correcoes (campo1, campo2, campo3) VALUES (%(campo1)s, %(campo2)s, %(campo3)s)")
-        cursor.execute(query, correcao.dict())
+        query = ("INSERT INTO correcoes (comentarios, redacoes_redacao_id, nota) "
+                 "VALUES (%s, %s, %s)")
+        
+        correcao_data = correcao.dict()
+        correcao_data['redacoes_redacao_id'] = correcao_data.pop('redacao_id')
+
+        cursor.execute(query, (correcao_data['comentarios'], correcao_data['redacoes_redacao_id'], correcao_data['nota']))
         cnx.commit()
 
         correcao_id = cursor.lastrowid
@@ -57,7 +62,8 @@ async def get_correcao(correcao_id: str) -> CorrecaoInDB:
                                       database=MYSQL_DATABASE)
         cursor = cnx.cursor(dictionary=True)
 
-        query = ("SELECT * FROM correcoes WHERE id = %(id)s")
+        query = ("SELECT redacoes_redacao_id AS redacao_id, nota, comentarios "
+                 "FROM correcoes WHERE correcao_id = %(id)s")
         cursor.execute(query, {'id': correcao_id})
         correcao = cursor.fetchone()
 
@@ -72,6 +78,8 @@ async def get_correcao(correcao_id: str) -> CorrecaoInDB:
         print(f"Error: {err}")
         return None
 
+
+
 async def update_correcao(correcao_id: str, correcao: Correcao) -> dict:
     try:
         cnx = mysql.connector.connect(user=MYSQL_USER, password=MYSQL_PASSWORD,
@@ -79,8 +87,15 @@ async def update_correcao(correcao_id: str, correcao: Correcao) -> dict:
                                       database=MYSQL_DATABASE)
         cursor = cnx.cursor(dictionary=True)
 
-        query = ("UPDATE correcoes SET campo1 = %(campo1)s, campo2 = %(campo2)s, campo3 = %(campo3)s WHERE id = %(id)s")
-        cursor.execute(query, correcao.dict())
+        query = ("UPDATE correcoes SET comentarios = %(comentarios)s, redacoes_redacao_id = %(redacao_id)s, nota = %(nota)s WHERE correcao_id = %(correcao_id)s")
+        
+        # Convert Correcao object to dictionary
+        correcao_data = correcao.dict()
+        # Add correcao_id to the dictionary
+        correcao_data['correcao_id'] = correcao_id
+        
+        # Execute the query with the dictionary of parameters
+        cursor.execute(query, correcao_data)
         cnx.commit()
 
         cursor.close()
@@ -99,7 +114,7 @@ async def delete_correcao(correcao_id: str) -> dict:
                                       database=MYSQL_DATABASE)
         cursor = cnx.cursor(dictionary=True)
 
-        query = ("DELETE FROM correcoes WHERE id = %(id)s")
+        query = ("DELETE FROM correcoes WHERE correcao_id = %(id)s")
         cursor.execute(query, {'id': correcao_id})
         cnx.commit()
 

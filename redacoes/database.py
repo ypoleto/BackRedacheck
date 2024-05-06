@@ -1,9 +1,6 @@
 import mysql.connector
 from .models import RedacaoInDB, Redacao
 from typing import List
-from propostas.database import get_proposta
-from turmas.database import get_turma
-from users.database import get_user
 
 # Configurações de conexão com o MySQL
 MYSQL_USER = "root"
