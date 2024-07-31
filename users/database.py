@@ -56,7 +56,7 @@ async def create_user(user: User) -> UserInDB:
         cursor.close()
         cnx.close()
 
-        return UserInDB(**new_user_data, id=str(user_id))
+        return UserInDB(**new_user_data, user_id=str(user_id))
 
     except mysql.connector.Error as err:
         # Trate a exceção aqui
@@ -92,18 +92,18 @@ async def get_user(user_id: str) -> UserInDB:
                                       database=MYSQL_DATABASE)
         cursor = cnx.cursor(dictionary=True)
 
-        query = ("SELECT * FROM users WHERE id = %(id)s")
-        cursor.execute(query, {'id': user_id})
+        query = ("SELECT * FROM users WHERE user_id = %(user_id)s")
+        cursor.execute(query, {'user_id': user_id})
         user = cursor.fetchone()
 
         cursor.close()
         cnx.close()
 
         if user:
-            user_id = user["id"]
-            user.pop("id", None)
+            user_id = user["user_id"]
+            user.pop("user_id", None)
             user["turma"] = await get_turma(user["turma_id"])
-            return UserInDB(**user, id=user_id)
+            return UserInDB(**user, user_id=user_id)
         return None
 
     except mysql.connector.Error as err:
@@ -139,7 +139,7 @@ async def update_user_password(user_id: str, new_password: str) -> dict:
         
         hashed_password = get_password_hash(new_password)
         
-        query = ("UPDATE users SET password=%s WHERE id=%s")
+        query = ("UPDATE users SET password=%s WHERE user_id=%s")
         
         cursor.execute(query, (hashed_password, user_id))
         
@@ -160,8 +160,8 @@ async def delete_user(user_id: str) -> dict:
                                       database=MYSQL_DATABASE)
         cursor = cnx.cursor(dictionary=True)
 
-        query = ("DELETE FROM users WHERE user_id = %(id)s")
-        cursor.execute(query, {'id': user_id})
+        query = ("DELETE FROM users WHERE user_id = %(user_id)s")
+        cursor.execute(query, {'user_id': user_id})
         cnx.commit()
 
         cursor.close()

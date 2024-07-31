@@ -1,6 +1,7 @@
 import mysql.connector
-from .models import PropostaInDB, Proposta
-from typing import List, Union
+from .models import PropostaInDB, Proposta, GeneroResponse, PropostaResponse
+from typing import List, Union, Optional
+from fastapi import FastAPI, Query
 
 # Configurações de conexão com o MySQL
 MYSQL_USER = "root"
@@ -30,22 +31,54 @@ async def create_proposta(proposta: Proposta) -> PropostaInDB:
         print(f"Error: {err}")
         return None
 
-async def list_propostas() -> List[dict]:
+async def list_propostas(user_id: Optional[int] = None) -> List[PropostaResponse]:
     try:
         cnx = mysql.connector.connect(user=MYSQL_USER, password=MYSQL_PASSWORD,
                                       host=MYSQL_HOST, port=MYSQL_PORT,
                                       database=MYSQL_DATABASE)
         cursor = cnx.cursor(dictionary=True)
-        query = ("SELECT * FROM propostas")
-        cursor.execute(query)
+
+        if user_id is not None:
+            query = """
+                SELECT p.proposta_id AS id, p.tema, p.min_palavras, p.max_palavras, p.data_aplicacao, p.data_entrega, p.dificuldade,
+                       g.genero_id AS genero_id, g.nome AS nome
+                FROM propostas p
+                JOIN propostas_has_turmas pht ON p.proposta_id = pht.propostas_proposta_id
+                JOIN turmas_has_users thu ON pht.turmas_turma_id = thu.turmas_turma_id
+                JOIN generos g ON g.genero_id = p.generos_genero_id
+                WHERE thu.users_user_id = %s;
+            """
+            params = (user_id,)
+        else:
+            query = """
+                SELECT p.proposta_id AS id, p.tema, p.min_palavras, p.max_palavras, p.data_aplicacao, p.data_entrega, p.dificuldade,
+                       g.genero_id AS genero_id, g.nome AS nome
+                FROM propostas p
+                JOIN generos g ON g.genero_id = p.generos_genero_id
+            """
+            params = ()
+        
+        cursor.execute(query, params)
         
         propostas = cursor.fetchall()
 
         cursor.close()
         cnx.close()
 
-        return propostas
-
+        return [PropostaResponse(
+            id=proposta['id'],
+            tema=proposta['tema'],
+            min_palavras=proposta['min_palavras'],
+            max_palavras=proposta['max_palavras'],
+            data_aplicacao=proposta['data_aplicacao'],
+            data_entrega=proposta['data_entrega'],
+            dificuldade=proposta['dificuldade'],
+            genero=GeneroResponse(
+                id=proposta['genero_id'],
+                nome=proposta['nome']
+            )
+        ) for proposta in propostas]
+        
     except mysql.connector.Error as err:
         print(f"Error: {err}")
         return []
@@ -73,7 +106,6 @@ async def get_proposta(proposta_id: str) -> Union[PropostaInDB, None]:
     except mysql.connector.Error as err:
         print(f"Error: {err}")
         return None
-
 
 async def update_proposta(proposta_id: str, proposta: Proposta) -> dict:
     try:

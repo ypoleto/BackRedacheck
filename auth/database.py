@@ -36,19 +36,16 @@ def get_password_hash(password):
     return pwd_context.hash(password)
 
 def get_user(username: str):
-    # Conectar ao banco de dados MySQL
     try:
         cnx = mysql.connector.connect(user=MYSQL_USER, password=MYSQL_PASSWORD,
                                       host=MYSQL_HOST, port=MYSQL_PORT,
                                       database=MYSQL_DATABASE)
         cursor = cnx.cursor(dictionary=True)
 
-        # Consulta para obter o usuário pelo nome de usuário
-        query = ("SELECT user_id, username, hashed_password, email, tipo FROM users WHERE username = %(username)s")
+        query = ("SELECT user_id, username, password as hashed_password, email, nome, tipo FROM users WHERE username = %(username)s")
         cursor.execute(query, {'username': username})
         user_data = cursor.fetchone()
 
-        # Fechar conexão e retornar dados do usuário se encontrados
         cursor.close()
         cnx.close()
         if user_data:
@@ -78,28 +75,27 @@ def create_access_token(data: dict, expires_delta: timedelta or None = None):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-# Função para obter o usuário atual
-async def get_current_user(token: str = Depends(oauth2_scheme)):
-    credential_exception = HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-                                         detail="Could not validate credentials", headers={"WWW-Authenticate": "Bearer"})
+def get_current_user(token: str = Depends(oauth2_scheme)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        
         username: str = payload.get("username")
+        
+        print('username: %s' % username)
         if username is None:
-            raise credential_exception
-
+            raise credentials_exception
+        
         token_data = TokenData(username=username)
     except JWTError:
-        raise credential_exception
-
-    user = get_user(token_data.username)
+        raise credentials_exception
+    
+    user = get_user(username=token_data.username)
     if user is None:
-        raise credential_exception
-
+        raise credentials_exception
+    
     return user
-
-# Função para obter o usuário atual ativo
-async def get_current_active_user(current_user: UserInDB = Depends(get_current_user)):
-    if current_user.disabled:
-        raise HTTPException(status_code=400, detail="Inactive user")
-    return current_user

@@ -11,5 +11,5 @@ class User(BaseModel):
     cidades: Optional[str] = None
 
 class UserInDB(User):
-    _id: Optional[str] = None
+    _user_id: Optional[str] = None
     

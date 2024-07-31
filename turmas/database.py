@@ -1,6 +1,6 @@
 import mysql.connector
 from .models import TurmaInDB, Turma
-from typing import List
+from typing import List, Optional
 
 # Configurações de conexão com o MySQL
 MYSQL_USER = "root"
@@ -16,7 +16,7 @@ async def create_turma(turma: Turma) -> TurmaInDB:
                                       database=MYSQL_DATABASE)
         cursor = cnx.cursor(dictionary=True)
 
-        query = ("INSERT INTO turmas (nome, professor) VALUES (%(nome)s, %(professor)s)")
+        query = ("INSERT INTO turmas (nome, professor, colegio) VALUES (%(nome)s, %(professor)s, %(colegio)s)")
         cursor.execute(query, turma.dict())
         cnx.commit()
 
@@ -33,15 +33,21 @@ async def create_turma(turma: Turma) -> TurmaInDB:
 
 
 
-async def list_turmas() -> List[dict]:
+async def list_turmas(professor_id: Optional[int] = None) -> List[dict]:
     try:
         cnx = mysql.connector.connect(user=MYSQL_USER, password=MYSQL_PASSWORD,
                                       host=MYSQL_HOST, port=MYSQL_PORT,
                                       database=MYSQL_DATABASE)
         cursor = cnx.cursor(dictionary=True)
-
-        query = ("SELECT * FROM turmas")
-        cursor.execute(query)
+        print(professor_id)
+        if professor_id is not None:
+            query = ("SELECT * FROM turmas where professor = %s")
+            params = (professor_id,) 
+        else:
+            query = ("SELECT * FROM turmas")
+            params = ()
+            
+        cursor.execute(query, params)
         turmas = cursor.fetchall()
 
         cursor.close()
@@ -84,7 +90,7 @@ async def update_turma(turma_id: str, turma: Turma) -> dict:
                                       database=MYSQL_DATABASE)
         cursor = cnx.cursor(dictionary=True)
 
-        query = ("UPDATE turmas SET nome=%(nome)s, professor=%(professor)s WHERE turma_id=%(turma_id)s")
+        query = ("UPDATE turmas SET nome=%(nome)s, professor=%(professor)s colegio=%(colegio)s WHERE turma_id=%(turma_id)s")
         turma_dict["turma_id"] = turma_id  # Adicionando o ID da turma ao dicionário
         cursor.execute(query, turma_dict)
         cnx.commit()

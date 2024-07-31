@@ -1,12 +1,13 @@
-from fastapi import APIRouter, HTTPException, Body
+from fastapi import APIRouter, HTTPException, Body, Query
 from . import database
+from typing import Optional
 from .models import Turma, TurmaInDB
 
 router = APIRouter()
 
 @router.get("/turmas/")
-async def list_turmas():
-    return await database.list_turmas()
+async def list_turmas(professor_id: Optional[int] = Query(None)):
+    return await database.list_turmas(professor_id=professor_id)
 
 @router.get("/turmas/{turma_id}")
 async def get_turma(turma_id: str):

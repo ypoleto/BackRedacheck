@@ -4,11 +4,10 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 import jwt
 import bcrypt
 import mysql.connector
-from .models import Token, User
-from .database import ALGORITHM, SECRET_KEY, authenticate_user, create_access_token, get_current_active_user, ACCESS_TOKEN_EXPIRE_MINUTES
+from .models import Token, User, UserInDB
+from .database import ALGORITHM, SECRET_KEY, authenticate_user, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES, get_current_user
 
 
-# Configurações de conexão com o MySQL
 MYSQL_USER = "root"
 MYSQL_PASSWORD = "root"
 MYSQL_HOST = "127.0.0.1"
@@ -29,18 +28,9 @@ async def login_for_access_token(request: Request):
                             detail="Incorrect username or password", headers={"WWW-Authenticate": "Bearer"})
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"username": user.username, "email": user.email, "nome": user.nome, "tipo": user.tipo, "turmas": user.turmas}, expires_delta=access_token_expires)
+        data={"user_id": user.user_id, "username": user.username, "email": user.email, "nome": user.nome, "tipo": user.tipo}, expires_delta=access_token_expires)
     return {"access_token": access_token, "token_type": "bearer"}
 
-@router.get("/users/me/", response_model=User)
-async def read_users_me(current_user: User = Depends(get_current_active_user)):
-    return current_user
-
-@router.get("/users/me/items")
-async def read_own_items(current_user: User = Depends(get_current_active_user)):
-    return [{"item_id": 1, "owner": current_user}]
-
-# Função para verificar o token
 def verify_token(token: str = Depends(OAuth2PasswordBearer(tokenUrl="/login"))) -> dict:
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
@@ -52,6 +42,12 @@ def verify_token(token: str = Depends(OAuth2PasswordBearer(tokenUrl="/login"))) 
 @router.get("/protected/")
 async def protected_route(payload: dict = Depends(verify_token)):
     return {"message": "Rota protegida!", "payload": payload}
+
+
+@router.get("/users/me")
+def read_users_me(current_user: UserInDB = Depends(get_current_user)):
+    return current_user
+
 
 # Função para autenticar o usuário no MySQL
 def authenticate_user(username: str, password: str):

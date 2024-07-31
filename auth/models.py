@@ -7,18 +7,18 @@ class Token(BaseModel):
     access_token: str
     token_type: str
 
-
 class TokenData(BaseModel):
-    username: str or None = None # type: ignore
+    username:str
 
 class User(BaseModel):
     user_id: int
     username: str
     email: str
-    nome: str
+    nome: Optional[str] = None
     tipo: str
     turmas: List[str] = []
     cidades: List[str] = []
-
+    
+    
 class UserInDB(User):
-    hashed_password: str
+    hashed_password: Optional[str]

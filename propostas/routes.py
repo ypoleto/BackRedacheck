@@ -1,3 +1,4 @@
+from typing import Optional
 from fastapi import APIRouter, HTTPException, Body, Query
 from . import database
 from .models import Proposta, PropostaInDB
@@ -5,12 +6,8 @@ from .models import Proposta, PropostaInDB
 router = APIRouter()
 
 @router.get("/propostas/")
-async def list_propostas():
-    return await database.list_propostas()
-
-@router.get("/propostas/")
-async def get_propostas():
-    return await list_propostas()
+async def get_propostas(user_id: Optional[int] = Query(None)):
+    return await database.list_propostas(user_id=user_id)
 
 @router.get("/propostas/{proposta_id}")
 async def get_proposta(proposta_id: str):
