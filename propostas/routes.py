@@ -21,8 +21,8 @@ async def get_proposta(proposta_id: str):
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
     
 @router.post("/propostas/")
-async def create_proposta(proposta: Proposta = Body(...)):
-    new_proposta = await database.create_proposta(proposta)
+async def create_proposta(turma_id: int, proposta: Proposta = Body(...)):
+    new_proposta = await database.create_proposta(turma_id, proposta)
     return new_proposta
 
 @router.put("/propostas/{proposta_id}")

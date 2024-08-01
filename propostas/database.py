@@ -10,26 +10,54 @@ MYSQL_HOST = "127.0.0.1"
 MYSQL_PORT = 3306
 MYSQL_DATABASE = "redacheck"
 
-async def create_proposta(proposta: Proposta) -> PropostaInDB:
+async def create_proposta(turma_id: int, proposta: Proposta) -> Optional[dict]:
+    proposta_dict = proposta.dict()
+    
     try:
-        cnx = mysql.connector.connect(user=MYSQL_USER, password=MYSQL_PASSWORD,
-                                      host=MYSQL_HOST, port=MYSQL_PORT,
-                                      database=MYSQL_DATABASE)
+        cnx = mysql.connector.connect(
+            user=MYSQL_USER,
+            password=MYSQL_PASSWORD,
+            host=MYSQL_HOST,
+            port=MYSQL_PORT,
+            database=MYSQL_DATABASE
+        )
         cursor = cnx.cursor(dictionary=True)
-
-        query = ("INSERT INTO propostas (tema, min_palavras, max_palavras, data_aplicacao, data_entrega, dificuldade, generos_genero_id, users_user_id) VALUES (%(tema)s, %(min_palavras)s, %(max_palavras)s, %(data_aplicacao)s, %(data_entrega)s, %(dificuldade)s, %(genero_id)s, %(user_id)s)")
-        cursor.execute(query, proposta.dict())
+        
+        # Iniciar a transação
+        cnx.start_transaction()
+        
+        # Inserir na tabela propostas
+        query_proposta = """
+            INSERT INTO propostas(tema, min_palavras, max_palavras, data_aplicacao, data_entrega, dificuldade, generos_genero_id, users_user_id) 
+            VALUES (%(tema)s, %(min_palavras)s, %(max_palavras)s, %(data_aplicacao)s, %(data_entrega)s, %(dificuldade)s, %(genero_id)s, %(user_id)s)
+        """
+        cursor.execute(query_proposta, proposta_dict)
+        
+        # Obter o id da proposta recém-criada
+        proposta_id = cursor.lastrowid
+        
+        # Inserir na tabela propostas_has_turmas
+        query_relacao = """
+            INSERT INTO propostas_has_turmas(turmas_turma_id, propostas_proposta_id) 
+            VALUES (%s, %s)
+        """
+        cursor.execute(query_relacao, (turma_id, proposta_id))
+        
+        # Confirmar a transação
         cnx.commit()
 
-        proposta_id = cursor.lastrowid
+        # Fechar o cursor e a conexão
         cursor.close()
         cnx.close()
-
-        return PropostaInDB(**proposta.dict(), id=str(proposta_id))
+        
+        return {"message": "Proposta criada com sucesso", "proposta_id": proposta_id}
     
     except mysql.connector.Error as err:
+        # Reverter a transação em caso de erro
+        cnx.rollback()
         print(f"Error: {err}")
-        return None
+        return {"message": f"Erro: {err}"}
+
 
 async def list_propostas(user_id: Optional[int] = None) -> List[PropostaResponse]:
     try:
@@ -37,8 +65,17 @@ async def list_propostas(user_id: Optional[int] = None) -> List[PropostaResponse
                                       host=MYSQL_HOST, port=MYSQL_PORT,
                                       database=MYSQL_DATABASE)
         cursor = cnx.cursor(dictionary=True)
+        
+        cursor.execute("SELECT tipo FROM users WHERE user_id = %s", (user_id,))
+        user = cursor.fetchone()
 
-        if user_id is not None:
+        if not user_id:
+            print("Usuário não encontrado")
+            return []
+
+        user_type = user['tipo']
+        
+        if user_type == "aluno":
             query = """
                 SELECT p.proposta_id AS id, p.tema, p.min_palavras, p.max_palavras, p.data_aplicacao, p.data_entrega, p.dificuldade,
                        g.genero_id AS genero_id, g.nome AS nome
@@ -49,17 +86,20 @@ async def list_propostas(user_id: Optional[int] = None) -> List[PropostaResponse
                 WHERE thu.users_user_id = %s;
             """
             params = (user_id,)
-        else:
+        elif user_type == "professor":
             query = """
                 SELECT p.proposta_id AS id, p.tema, p.min_palavras, p.max_palavras, p.data_aplicacao, p.data_entrega, p.dificuldade,
                        g.genero_id AS genero_id, g.nome AS nome
                 FROM propostas p
                 JOIN generos g ON g.genero_id = p.generos_genero_id
+                WHERE p.users_user_id = %s;
             """
-            params = ()
-        
+            params = (user_id,)
+        else:
+            print("Tipo de usuário inválido")
+            return []
+
         cursor.execute(query, params)
-        
         propostas = cursor.fetchall()
 
         cursor.close()
