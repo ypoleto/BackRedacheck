@@ -83,27 +83,38 @@ async def get_turma(turma_id: str) -> TurmaInDB:
 
 async def update_turma(turma_id: str, turma: Turma) -> dict:
     turma_dict = turma.dict()
-    
+
     try:
-        cnx = mysql.connector.connect(user=MYSQL_USER, password=MYSQL_PASSWORD,
-                                      host=MYSQL_HOST, port=MYSQL_PORT,
-                                      database=MYSQL_DATABASE)
+        cnx = mysql.connector.connect(
+            user=MYSQL_USER,
+            password=MYSQL_PASSWORD,
+            host=MYSQL_HOST,
+            port=MYSQL_PORT,
+            database=MYSQL_DATABASE
+        )
         cursor = cnx.cursor(dictionary=True)
 
-        query = ("UPDATE turmas SET nome=%(nome)s, professor=%(professor)s colegio=%(colegio)s WHERE turma_id=%(turma_id)s")
-        turma_dict["turma_id"] = turma_id  # Adicionando o ID da turma ao dicionário
+        query = ("UPDATE turmas SET nome=%(nome)s, professor=%(professor)s, colegio=%(colegio)s WHERE turma_id=%(turma_id)s")
+        turma_dict["turma_id"] = turma_id
         cursor.execute(query, turma_dict)
         cnx.commit()
+
+        # Recuperar os dados atualizados
+        select_query = "SELECT * FROM turmas WHERE turma_id=%s"
+        cursor.execute(select_query, (turma_id,))
+        updated_turma = cursor.fetchone()
 
         cursor.close()
         cnx.close()
 
-        return {"message": "Turma atualizada com sucesso"}
+        if updated_turma:
+            return updated_turma
+        else:
+            return {"message": "Turma não encontrada após atualização"}
     
     except mysql.connector.Error as err:
         print(f"Error: {err}")
-        return None
-
+        return {"message": f"Erro: {err}"}
 
 async def delete_turma(turma_id: str) -> dict:
     try:
