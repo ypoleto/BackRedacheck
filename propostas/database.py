@@ -83,9 +83,14 @@ async def list_propostas(user_id: Optional[int] = None) -> List[PropostaResponse
                 JOIN propostas_has_turmas pht ON p.proposta_id = pht.propostas_proposta_id
                 JOIN turmas_has_users thu ON pht.turmas_turma_id = thu.turmas_turma_id
                 JOIN generos g ON g.genero_id = p.generos_genero_id
-                WHERE thu.users_user_id = %s;
+                WHERE thu.users_user_id = %s
+                AND p.proposta_id NOT IN (
+                    SELECT r.propostas_proposta_id
+                    FROM redacoes r
+                    WHERE r.users_user_id = %s
+                );
             """
-            params = (user_id,)
+            params = (user_id, user_id)
         elif user_type == "professor":
             query = """
                 SELECT p.proposta_id AS id, p.tema, p.min_palavras, p.max_palavras, p.data_aplicacao, p.data_entrega, p.dificuldade,
@@ -122,7 +127,7 @@ async def list_propostas(user_id: Optional[int] = None) -> List[PropostaResponse
     except mysql.connector.Error as err:
         print(f"Error: {err}")
         return []
-
+    
 async def get_proposta(proposta_id: str) -> Union[PropostaInDB, None]:
     try:
         cnx = mysql.connector.connect(user=MYSQL_USER, password=MYSQL_PASSWORD,

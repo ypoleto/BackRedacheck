@@ -5,8 +5,8 @@ from .models import Redacao, RedacaoInDB
 router = APIRouter()
 
 @router.get("/redacoes/")
-async def list_redacoes():
-    return await database.list_redacoes()
+async def list_redacoes(user_id: int):
+    return await database.list_redacoes(user_id)
 
 @router.get("/redacoes/{redacao_id}")
 async def get_redacao(redacao_id: str):

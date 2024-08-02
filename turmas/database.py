@@ -16,7 +16,7 @@ async def create_turma(turma: Turma) -> TurmaInDB:
                                       database=MYSQL_DATABASE)
         cursor = cnx.cursor(dictionary=True)
 
-        query = ("INSERT INTO turmas (nome, professor, colegio) VALUES (%(nome)s, %(professor)s, %(colegio)s)")
+        query = ("INSERT INTO turmas (nome, professor, colegio, turma_ativa) VALUES (%(nome)s, %(professor)s, %(colegio)s, %(turma_ativa)s)")
         cursor.execute(query, turma.dict())
         cnx.commit()
 
@@ -94,7 +94,7 @@ async def update_turma(turma_id: str, turma: Turma) -> dict:
         )
         cursor = cnx.cursor(dictionary=True)
 
-        query = ("UPDATE turmas SET nome=%(nome)s, professor=%(professor)s, colegio=%(colegio)s WHERE turma_id=%(turma_id)s")
+        query = ("UPDATE turmas SET nome=%(nome)s, professor=%(professor)s, colegio=%(colegio)s, turma_ativa=%(turma_ativa)s WHERE turma_id=%(turma_id)s")
         turma_dict["turma_id"] = turma_id
         cursor.execute(query, turma_dict)
         cnx.commit()
