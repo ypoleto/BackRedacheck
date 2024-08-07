@@ -25,34 +25,22 @@ async def create_user(user: User) -> UserInDB:
         cursor = cnx.cursor(dictionary=True)
 
         new_user_data = user.model_dump()
+        turma = new_user_data.pop('turma')
         new_user_data["password"] = get_password_hash(new_user_data["password"])
 
-        # Inserir usuário na tabela de usuários
-        user_query = ("INSERT INTO users (username, email, password, nome, tipo) VALUES "
+        user_query = ("INSERT INTO users (username, email, password, nome, tipo) VALUES"
                       "(%(username)s, %(email)s, %(password)s, %(nome)s, %(tipo)s)")
         cursor.execute(user_query, new_user_data)
         cnx.commit()
 
-        # Obter o ID do usuário recém-inserido
         user_id = cursor.lastrowid
-
-        # Processar cidades e turmas separadas por vírgula
-        # Convertendo IDs das cidades em inteiros
-        cidades = []
-        if new_user_data["cidades"]:
-            cidades = [int(city_id) for city_id in new_user_data["cidades"].split(",")]
-
-        # Inserir relações nas tabelas users_has_cidades
-        for cidade_id in cidades:
-            cidade_user_relation = {
-                "cidade_id": cidade_id,
-                "user_id": user_id
-            }
-            cidade_user_query = ("INSERT INTO users_has_cidades (cidade, users_user_id) VALUES "
-                                 "(%(cidade_id)s, %(user_id)s)")
-            cursor.execute(cidade_user_query, cidade_user_relation)
-
-        cnx.commit()
+        if turma is not None:
+            turma_user_data = {"turma": turma, "user_id": user_id}
+            query = ("INSERT INTO turmas_has_users (turmas_turma_id, users_user_id) VALUES"
+                    "(%(turma)s, %(user_id)s)")
+            cursor.execute(query, turma_user_data)
+        
+            cnx.commit()
         cursor.close()
         cnx.close()
 
@@ -62,7 +50,6 @@ async def create_user(user: User) -> UserInDB:
         # Trate a exceção aqui
         print("Erro ao criar usuário:", err)
         raise
-
 
 
 async def list_users() -> List[dict]:

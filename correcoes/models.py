@@ -7,5 +7,6 @@ class Correcao(BaseModel):
     nota: int
 
 class CorrecaoInDB(Correcao):
-    _id: Optional[str] = None
+    correcao_id: Optional[int] = None
+    redacao_id: Optional[int] = None
  

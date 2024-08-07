@@ -16,13 +16,19 @@ async def create_correcao(correcao: Correcao) -> CorrecaoInDB:
                                       database=MYSQL_DATABASE)
         cursor = cnx.cursor(dictionary=True)
 
-        query = ("INSERT INTO correcoes (comentarios, redacoes_redacao_id, nota) "
-                 "VALUES (%s, %s, %s)")
+        # Primeira query para inserir a correção
+        query_insert = ("INSERT INTO correcoes (comentarios, redacoes_redacao_id, nota) "
+                        "VALUES (%s, %s, %s)")
         
         correcao_data = correcao.dict()
         correcao_data['redacoes_redacao_id'] = correcao_data.pop('redacao_id')
 
-        cursor.execute(query, (correcao_data['comentarios'], correcao_data['redacoes_redacao_id'], correcao_data['nota']))
+        cursor.execute(query_insert, (correcao_data['comentarios'], correcao_data['redacoes_redacao_id'], correcao_data['nota']))
+        cnx.commit()
+
+        # Segunda query para atualizar o status da redação
+        query_update = "UPDATE redacoes SET status = 1 WHERE redacao_id = %s"
+        cursor.execute(query_update, (correcao_data['redacoes_redacao_id'],))
         cnx.commit()
 
         correcao_id = cursor.lastrowid
@@ -126,3 +132,25 @@ async def delete_correcao(correcao_id: str) -> dict:
     except mysql.connector.Error as err:
         print(f"Error: {err}")
         return {"message": "Erro ao deletar correcao"}
+
+async def get_correcao_by_redacao_id(redacao_id: str) -> CorrecaoInDB:
+    try:
+        cnx = mysql.connector.connect(user=MYSQL_USER, password=MYSQL_PASSWORD,
+                                      host=MYSQL_HOST, port=MYSQL_PORT,
+                                      database=MYSQL_DATABASE)
+        cursor = cnx.cursor(dictionary=True)
+
+        query = ("SELECT *, redacoes_redacao_id as redacao_id FROM correcoes WHERE redacoes_redacao_id = %(id)s")
+        cursor.execute(query, {'id': redacao_id})
+        correcao = cursor.fetchone()
+
+        cursor.close()
+        cnx.close()
+
+        if correcao:
+            return CorrecaoInDB(**correcao)
+        return None
+
+    except mysql.connector.Error as err:
+        print(f"Error: {err}")
+        return None

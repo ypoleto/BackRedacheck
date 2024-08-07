@@ -8,6 +8,14 @@ router = APIRouter()
 async def list_correcoes():
     return await database.list_correcoes()
 
+@router.get("/correcoes/redacao/{redacao_id}")
+async def get_correcao_by_redacao(redacao_id: str):
+    correcao = await database.get_correcao_by_redacao_id(redacao_id)
+    if correcao:
+        return correcao
+    else:
+        raise HTTPException(status_code=404, detail="Correcao não encontrada")
+
 @router.get("/correcoes/{correcao_id}")
 async def get_correcao(correcao_id: str):
     correcao = await database.get_correcao(correcao_id)

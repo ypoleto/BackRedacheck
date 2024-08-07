@@ -9,7 +9,7 @@ async def list_redacoes(user_id: int):
     return await database.list_redacoes(user_id)
 
 @router.get("/redacoes/{redacao_id}")
-async def get_redacao(redacao_id: str):
+async def get_redacao(redacao_id: int):
     redacao = await database.get_redacao(redacao_id)
     if redacao:
         return redacao
@@ -22,9 +22,9 @@ async def create_redacao(redacao: Redacao = Body(...)):
     return new_redacao
 
 @router.put("/redacoes/{redacao_id}")
-async def update_redacao(redacao_id: str, redacao: Redacao = Body(...)):
+async def update_redacao(redacao_id: int, redacao: Redacao = Body(...)):
     return await database.update_redacao(redacao_id, redacao)
 
 @router.delete("/redacoes/{redacao_id}")
-async def delete_redacao(redacao_id: str):
+async def delete_redacao(redacao_id: int):
     return await database.delete_redacao(redacao_id)

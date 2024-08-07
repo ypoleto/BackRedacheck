@@ -1,3 +1,4 @@
+from fastapi import HTTPException
 import mysql.connector
 from .models import AlunoResponse, GeneroResponse, PropostaResponse, RedacaoInDB, Redacao, RedacaoResponse
 from typing import List, Optional
@@ -16,15 +17,15 @@ async def create_redacao(redacao: Redacao) -> RedacaoInDB:
                                       database=MYSQL_DATABASE)
         cursor = cnx.cursor(dictionary=True)
 
-        query = ("INSERT INTO redacoes (texto, propostas_proposta_id, users_user_id, titulo, data_envio) "
-                 "VALUES (%s, %s, %s, %s, %s)")
+        query = ("INSERT INTO redacoes (texto, propostas_proposta_id, users_user_id, titulo, data_envio, status) "
+                 "VALUES (%s, %s, %s, %s, %s, %s)")
         
         # Adapte os valores dos campos e adicione os valores das chaves estrangeiras
         redacao_data = redacao.dict()
         redacao_data['propostas_proposta_id'] = redacao_data.pop('proposta_id')
         redacao_data['users_user_id'] = redacao_data.pop('user_id')
 
-        cursor.execute(query, (redacao_data['texto'], redacao_data['propostas_proposta_id'], redacao_data['users_user_id'], redacao_data['titulo'], redacao_data['data_envio']))
+        cursor.execute(query, (redacao_data['texto'], redacao_data['propostas_proposta_id'], redacao_data['users_user_id'], redacao_data['titulo'], redacao_data['data_envio'], redacao_data['status']))
         cnx.commit()
 
         redacao_id = cursor.lastrowid
@@ -55,7 +56,7 @@ async def list_redacoes(user_id: Optional[int] = None) -> List[RedacaoResponse]:
         # Define a query com base no tipo do usuário
         if user_type == 'aluno':
             query = """
-                SELECT r.redacao_id AS redacao_id, r.texto, r.titulo, r.data_envio, r.propostas_proposta_id AS proposta_id, r.users_user_id AS user_id,
+                SELECT r.redacao_id AS redacao_id, r.texto, r.status, r.titulo, r.data_envio, r.propostas_proposta_id AS proposta_id, r.users_user_id AS user_id,
                        p.tema, p.min_palavras, p.max_palavras, p.data_aplicacao, p.data_entrega, p.dificuldade,
                        g.genero_id AS genero_id, g.nome AS genero_nome,
                        u.user_id AS aluno_id, u.nome AS aluno_nome
@@ -68,15 +69,16 @@ async def list_redacoes(user_id: Optional[int] = None) -> List[RedacaoResponse]:
             cursor.execute(query, (user_id,))
         elif user_type == 'professor':
             query = """
-                SELECT r.redacao_id AS redacao_id, r.texto, r.titulo, r.data_envio, r.propostas_proposta_id AS proposta_id, r.users_user_id AS user_id,
-                       p.tema, p.min_palavras, p.max_palavras, p.data_aplicacao, p.data_entrega, p.dificuldade,
-                       g.genero_id AS genero_id, g.nome AS genero_nome,
-                       u.user_id AS aluno_id, u.nome AS aluno_nome
+                SELECT r.redacao_id AS redacao_id, r.texto, r.titulo, r.status, r.data_envio, r.propostas_proposta_id AS proposta_id, r.users_user_id AS user_id,
+                    p.tema, p.min_palavras, p.max_palavras, p.data_aplicacao, p.data_entrega, p.dificuldade,
+                    g.genero_id AS genero_id, g.nome AS genero_nome,
+                    u.user_id AS aluno_id, u.nome AS aluno_nome
                 FROM redacoes r
                 JOIN propostas p ON r.propostas_proposta_id = p.proposta_id
                 JOIN generos g ON p.generos_genero_id = g.genero_id
                 JOIN users u ON r.users_user_id = u.user_id
-                WHERE p.users_user_id = %s;
+                LEFT JOIN correcoes c ON r.redacao_id = c.redacoes_redacao_id
+                WHERE p.users_user_id = %s AND c.redacoes_redacao_id IS NULL;
             """
             cursor.execute(query, (user_id,))
         else:
@@ -93,6 +95,7 @@ async def list_redacoes(user_id: Optional[int] = None) -> List[RedacaoResponse]:
                 texto=redacao['texto'],
                 titulo=redacao['titulo'],
                 data_envio=redacao['data_envio'],
+                status=redacao['status'],
                 proposta=PropostaResponse(
                     id=redacao['proposta_id'],
                     tema=redacao['tema'],
@@ -121,30 +124,63 @@ async def list_redacoes(user_id: Optional[int] = None) -> List[RedacaoResponse]:
         print(f"Error: {err}")
         return []
 
-async def get_redacao(redacao_id: str) -> RedacaoInDB:
+async def get_redacao(redacao_id: int) -> Optional[RedacaoResponse]:
     try:
         cnx = mysql.connector.connect(user=MYSQL_USER, password=MYSQL_PASSWORD,
                                       host=MYSQL_HOST, port=MYSQL_PORT,
                                       database=MYSQL_DATABASE)
         cursor = cnx.cursor(dictionary=True)
-
-        query = ("SELECT propostas_proposta_id AS proposta_id, users_user_id AS user_id, texto "
-                 "FROM redacoes WHERE redacao_id = %(id)s")
-        cursor.execute(query, {'id': redacao_id})
+        query = """
+            SELECT r.redacao_id AS redacao_id, r.texto, r.titulo, r.status, r.data_envio, r.propostas_proposta_id AS proposta_id, r.users_user_id AS user_id,
+                   p.tema, p.min_palavras, p.max_palavras, p.data_aplicacao, p.data_entrega, p.dificuldade,
+                   g.genero_id AS genero_id, g.nome AS genero_nome,
+                   u.user_id AS aluno_id, u.nome AS aluno_nome
+            FROM redacoes r
+            JOIN propostas p ON r.propostas_proposta_id = p.proposta_id
+            JOIN generos g ON p.generos_genero_id = g.genero_id
+            JOIN users u ON r.users_user_id = u.user_id
+            WHERE r.redacao_id = %s;
+        """
+        cursor.execute(query, (redacao_id,))
         redacao = cursor.fetchone()
 
         cursor.close()
         cnx.close()
 
         if redacao:
-            return RedacaoInDB(**redacao)
-        return None
+            return RedacaoResponse(
+                id=redacao['redacao_id'],
+                texto=redacao['texto'],
+                titulo=redacao['titulo'],
+                data_envio=redacao['data_envio'],
+                status=redacao['status'],
+                proposta=PropostaResponse(
+                    id=redacao['proposta_id'],
+                    tema=redacao['tema'],
+                    min_palavras=redacao['min_palavras'],
+                    max_palavras=redacao['max_palavras'],
+                    data_aplicacao=redacao['data_aplicacao'],
+                    data_entrega=redacao['data_entrega'],
+                    dificuldade=redacao['dificuldade'],
+                    genero=GeneroResponse(
+                        id=redacao['genero_id'],
+                        nome=redacao['genero_nome']
+                    )
+                ),
+                aluno=AlunoResponse(
+                    id=redacao['aluno_id'],
+                    nome=redacao['aluno_nome']
+                )
+            )
+        else:
+            raise HTTPException(status_code=404, detail="Redação não encontrada")
 
     except mysql.connector.Error as err:
         print(f"Error: {err}")
-        return None
-
-
+        raise HTTPException(status_code=500, detail="Erro no servidor")
+    except ValueError as err:
+        print(f"Error: {err}")
+        raise HTTPException(status_code=400, detail=str(err))
 
 async def update_redacao(redacao_id: str, redacao: Redacao) -> dict:
     try:
@@ -155,12 +191,9 @@ async def update_redacao(redacao_id: str, redacao: Redacao) -> dict:
 
         query = ("UPDATE redacoes SET texto = %(texto)s, titulo = %(titulo)s, data_envio = %(data_envio)s, propostas_proposta_id = %(proposta_id)s, users_user_id = %(user_id)s WHERE redacao_id = %(redacao_id)s")
         
-        # Convert Redacao object to dictionary
         redacao_data = redacao.dict()
-        # Add redacao_id to the dictionary
         redacao_data['redacao_id'] = redacao_id
         
-        # Execute the query with the dictionary of parameters
         cursor.execute(query, redacao_data)
         cnx.commit()
 

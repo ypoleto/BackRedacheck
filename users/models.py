@@ -7,8 +7,7 @@ class User(BaseModel):
     password: Optional[str] = None
     tipo: str
     username: str
-    turmas: Optional[str] = None
-    cidades: Optional[str] = None
+    turma: Optional[str] = None
 
 class UserInDB(User):
     _user_id: Optional[str] = None

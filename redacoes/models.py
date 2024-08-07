@@ -9,9 +9,10 @@ class Redacao(BaseModel):
     proposta_id: int
     user_id: int
     data_envio: datetime
+    status: int
 
 class RedacaoInDB(Redacao):
-    _id: Optional[str] = None
+    redacao_id: Optional[int] = None
     
 class GeneroResponse(BaseModel):
     id: int
@@ -36,5 +37,6 @@ class RedacaoResponse(BaseModel):
     texto: str
     titulo: str
     data_envio: datetime
+    status: int
     proposta: PropostaResponse
     aluno: AlunoResponse
