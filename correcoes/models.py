@@ -3,7 +3,6 @@ from typing import Optional, List
 
 class Correcao(BaseModel):
     redacao_id: int
-    comentarios: str
     nota: int
 
 class CorrecaoInDB(Correcao):

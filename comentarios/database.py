@@ -1,5 +1,5 @@
 import mysql.connector
-from .models import CorrecaoInDB, Correcao
+from .models import ComentarioInDB, Comentario
 from typing import List
 
 # Configurações de conexão com o MySQL
@@ -9,75 +9,81 @@ MYSQL_HOST = "127.0.0.1"
 MYSQL_PORT = 3306
 MYSQL_DATABASE = "redacheck"
 
-async def create_correcao(correcao: Correcao) -> CorrecaoInDB:
+async def create_comentario(comentario: Comentario) -> ComentarioInDB:
+    cnx = None
+    cursor = None
+
     try:
         cnx = mysql.connector.connect(user=MYSQL_USER, password=MYSQL_PASSWORD,
                                       host=MYSQL_HOST, port=MYSQL_PORT,
                                       database=MYSQL_DATABASE)
         cursor = cnx.cursor(dictionary=True)
 
-        # Primeira query para inserir a correção
-        query_insert = ("INSERT INTO correcoes (redacoes_redacao_id, nota) "
+        # Query para inserir o comentário
+        query_insert = ("INSERT INTO comentarios (comentario, paragrafo_id, correcoes_correcao_id) "
                         "VALUES (%s, %s, %s)")
         
-        correcao_data = correcao.dict()
-        correcao_data['redacoes_redacao_id'] = correcao_data.pop('redacao_id')
-
-        cursor.execute(query_insert, correcao_data['redacoes_redacao_id'], correcao_data['nota'])
+        comentario_data = comentario.dict()
+        comentario_data['correcoes_correcao_id'] = comentario_data.pop('correcao_id')
+        
+        cursor.execute(query_insert, (comentario_data['comentario'], comentario_data['paragrafo_id'], comentario_data['correcoes_correcao_id']))
         cnx.commit()
 
-        # Segunda query para atualizar o status da redação
-        query_update = "UPDATE redacoes SET status = 1 WHERE redacao_id = %s"
-        cursor.execute(query_update, (correcao_data['redacoes_redacao_id'],))
-        cnx.commit()
+        comentario_id = cursor.lastrowid
+        if comentario_id is None:
+            raise Exception("Falha ao inserir o comentário no banco de dados. Nenhum ID retornado.")
 
-        correcao_id = cursor.lastrowid
-        cursor.close()
-        cnx.close()
-
-        return CorrecaoInDB(**correcao.dict(), id=str(correcao_id))
+        return ComentarioInDB(**comentario.dict(), id=comentario_id)
     
     except mysql.connector.Error as err:
-        print(f"Error: {err}")
+        print(f"Erro no MySQL: {err}")
         return None
+    except Exception as e:
+        print(f"Erro inesperado: {e}")
+        return None
+    finally:
+        if cursor:
+            cursor.close()
+        if cnx:
+            cnx.close()
 
-async def list_correcoes() -> List[dict]:
+async def list_comentarios() -> List[dict]:
     try:
         cnx = mysql.connector.connect(user=MYSQL_USER, password=MYSQL_PASSWORD,
                                       host=MYSQL_HOST, port=MYSQL_PORT,
                                       database=MYSQL_DATABASE)
         cursor = cnx.cursor(dictionary=True)
 
-        query = ("SELECT * FROM correcoes")
+        query = ("SELECT * FROM comentarios")
         cursor.execute(query)
-        correcoes = cursor.fetchall()
+        comentarios = cursor.fetchall()
 
         cursor.close()
         cnx.close()
 
-        return correcoes
+        return comentarios
 
     except mysql.connector.Error as err:
         print(f"Error: {err}")
         return []
 
-async def get_correcao(correcao_id: str) -> CorrecaoInDB:
+async def get_comentario(comentario_id: int) -> ComentarioInDB:
     try:
         cnx = mysql.connector.connect(user=MYSQL_USER, password=MYSQL_PASSWORD,
                                       host=MYSQL_HOST, port=MYSQL_PORT,
                                       database=MYSQL_DATABASE)
         cursor = cnx.cursor(dictionary=True)
 
-        query = ("SELECT redacoes_redacao_id AS redacao_id, nota "
-                 "FROM correcoes WHERE correcao_id = %(id)s")
-        cursor.execute(query, {'id': correcao_id})
-        correcao = cursor.fetchone()
+        query = ("SELECT * FROM comentarios WHERE comentario_id = %(comentario_id)s")
+        cursor.execute(query, {'comentario_id': comentario_id})
+        comentario = cursor.fetchone()
 
         cursor.close()
         cnx.close()
 
-        if correcao:
-            return CorrecaoInDB(**correcao)
+        if comentario:
+            comentario['correcao_id'] = comentario.pop('correcoes_correcao_id')
+            return ComentarioInDB(**comentario)
         return None
 
     except mysql.connector.Error as err:
@@ -85,70 +91,69 @@ async def get_correcao(correcao_id: str) -> CorrecaoInDB:
         return None
 
 
-
-async def update_correcao(correcao_id: str, correcao: Correcao) -> dict:
+async def update_comentario(comentario_id: str, comentario: Comentario) -> dict:
     try:
         cnx = mysql.connector.connect(user=MYSQL_USER, password=MYSQL_PASSWORD,
                                       host=MYSQL_HOST, port=MYSQL_PORT,
                                       database=MYSQL_DATABASE)
         cursor = cnx.cursor(dictionary=True)
 
-        query = ("UPDATE correcoes SET redacoes_redacao_id = %(redacao_id)s, nota = %(nota)s WHERE correcao_id = %(correcao_id)s")
+        query = ("UPDATE comentarios SET comentarios = %(comentarios)s, redacoes_redacao_id = %(redacao_id)s, nota = %(nota)s WHERE comentario_id = %(comentario_id)s")
         
-        # Convert Correcao object to dictionary
-        correcao_data = correcao.dict()
-        # Add correcao_id to the dictionary
-        correcao_data['correcao_id'] = correcao_id
+        # Convert Comentario object to dictionary
+        comentario_data = comentario.dict()
+        # Add comentario_id to the dictionary
+        comentario_data['comentario_id'] = comentario_id
         
         # Execute the query with the dictionary of parameters
-        cursor.execute(query, correcao_data)
+        cursor.execute(query, comentario_data)
         cnx.commit()
 
         cursor.close()
         cnx.close()
 
-        return {"message": "Correcao atualizada com sucesso"}
+        return {"message": "Comentario atualizada com sucesso"}
     
     except mysql.connector.Error as err:
         print(f"Error: {err}")
-        return {"message": "Erro ao atualizar correcao"}
+        return {"message": "Erro ao atualizar comentario"}
 
-async def delete_correcao(correcao_id: str) -> dict:
+async def delete_comentario(comentario_id: str) -> dict:
     try:
         cnx = mysql.connector.connect(user=MYSQL_USER, password=MYSQL_PASSWORD,
                                       host=MYSQL_HOST, port=MYSQL_PORT,
                                       database=MYSQL_DATABASE)
         cursor = cnx.cursor(dictionary=True)
 
-        query = ("DELETE FROM correcoes WHERE correcao_id = %(id)s")
-        cursor.execute(query, {'id': correcao_id})
+        query = ("DELETE FROM comentarios WHERE comentario_id = %(id)s")
+        cursor.execute(query, {'id': comentario_id})
         cnx.commit()
 
         cursor.close()
         cnx.close()
 
-        return {"message": "Correcao deletada com sucesso"}
+        return {"message": "Comentario deletada com sucesso"}
     
     except mysql.connector.Error as err:
         print(f"Error: {err}")
-        return {"message": "Erro ao deletar correcao"}
+        return {"message": "Erro ao deletar comentario"}
 
-async def get_correcao_by_redacao_id(redacao_id: str) -> CorrecaoInDB:
+async def get_comentario_by_redacao_id(redacao_id: str) -> ComentarioInDB:
     try:
         cnx = mysql.connector.connect(user=MYSQL_USER, password=MYSQL_PASSWORD,
                                       host=MYSQL_HOST, port=MYSQL_PORT,
                                       database=MYSQL_DATABASE)
         cursor = cnx.cursor(dictionary=True)
 
-        query = ("SELECT *, redacoes_redacao_id as redacao_id FROM correcoes WHERE redacoes_redacao_id = %(id)s")
+        query = ("SELECT *, redacoes_redacao_id as redacao_id FROM comentarios WHERE redacoes_redacao_id = %(id)s")
         cursor.execute(query, {'id': redacao_id})
-        correcao = cursor.fetchone()
+        comentario = cursor.fetchone()
 
         cursor.close()
         cnx.close()
 
-        if correcao:
-            return CorrecaoInDB(**correcao)
+        if comentario:
+            return ComentarioInDB(**comentario)
         return None
 
     except mysql.connector.Error as err:
