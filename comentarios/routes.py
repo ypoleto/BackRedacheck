@@ -5,8 +5,8 @@ from .models import Comentario, ComentarioInDB
 router = APIRouter()
 
 @router.get("/comentarios/")
-async def list_comentarios():
-    return await database.list_comentarios()
+async def list_comentarios(correcao_id: int):
+    return await database.list_comentarios(correcao_id)
 
 @router.get("/comentarios/{comentario_id}")
 async def get_comentario(comentario_id: int):

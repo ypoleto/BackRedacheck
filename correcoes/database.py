@@ -1,6 +1,7 @@
 import mysql.connector
 from .models import CorrecaoInDB, Correcao
 from typing import List
+from comentarios.database import create_comentario
 
 # Configurações de conexão com o MySQL
 MYSQL_USER = "root"
@@ -18,24 +19,37 @@ async def create_correcao(correcao: Correcao) -> CorrecaoInDB:
 
         # Primeira query para inserir a correção
         query_insert = ("INSERT INTO correcoes (redacoes_redacao_id, nota) "
-                        "VALUES (%s, %s, %s)")
+                        "VALUES (%s, %s)")
         
         correcao_data = correcao.dict()
         correcao_data['redacoes_redacao_id'] = correcao_data.pop('redacao_id')
 
-        cursor.execute(query_insert, correcao_data['redacoes_redacao_id'], correcao_data['nota'])
+        cursor.execute(query_insert, (correcao_data['redacoes_redacao_id'], correcao_data['nota']))
         cnx.commit()
+
+        # Obter o ID da correção recém-criada
+        correcao_id = cursor.lastrowid
 
         # Segunda query para atualizar o status da redação
         query_update = "UPDATE redacoes SET status = 1 WHERE redacao_id = %s"
         cursor.execute(query_update, (correcao_data['redacoes_redacao_id'],))
         cnx.commit()
 
-        correcao_id = cursor.lastrowid
         cursor.close()
         cnx.close()
-
-        return CorrecaoInDB(**correcao.dict(), id=str(correcao_id))
+        
+        # Processar os comentários após verificar se o correcao_id é válido
+        if 'comentarios' in correcao_data and correcao_data['comentarios']:
+            for comentario in correcao_data['comentarios']:
+                print('\n\n\n\n\n\n\ aaa', comentario, correcao_id)
+                
+                comentario_data = {
+                    'correcao_id': correcao_id,
+                    'paragrafo_id': comentario['paragrafo_id'],
+                    'comentario': comentario['comentario']
+                }
+                # Chama a função de criação de comentário
+                await create_comentario(comentario_data)
     
     except mysql.connector.Error as err:
         print(f"Error: {err}")

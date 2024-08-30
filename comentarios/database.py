@@ -12,6 +12,7 @@ MYSQL_DATABASE = "redacheck"
 async def create_comentario(comentario: Comentario) -> ComentarioInDB:
     cnx = None
     cursor = None
+    print("\n\n\n\n\n comentario", comentario)
 
     try:
         cnx = mysql.connector.connect(user=MYSQL_USER, password=MYSQL_PASSWORD,
@@ -23,12 +24,14 @@ async def create_comentario(comentario: Comentario) -> ComentarioInDB:
         query_insert = ("INSERT INTO comentarios (comentario, paragrafo_id, correcoes_correcao_id) "
                         "VALUES (%s, %s, %s)")
         
-        comentario_data = comentario.dict()
-        comentario_data['correcoes_correcao_id'] = comentario_data.pop('correcao_id')
-        
-        cursor.execute(query_insert, (comentario_data['comentario'], comentario_data['paragrafo_id'], comentario_data['correcoes_correcao_id']))
+        # Ajusta o nome da chave se necessário
+        comentario['correcoes_correcao_id'] = comentario.pop('correcao_id')
+
+        print("\n\n\n\n\n aaaaaaaaa", comentario)
+        cursor.execute(query_insert, (comentario['comentario'], comentario['paragrafo_id'], comentario['correcoes_correcao_id']))
         cnx.commit()
 
+        # Obtém o ID do comentário inserido
         comentario_id = cursor.lastrowid
         if comentario_id is None:
             raise Exception("Falha ao inserir o comentário no banco de dados. Nenhum ID retornado.")
@@ -47,15 +50,15 @@ async def create_comentario(comentario: Comentario) -> ComentarioInDB:
         if cnx:
             cnx.close()
 
-async def list_comentarios() -> List[dict]:
+async def list_comentarios(correcao_id: int) -> List[dict]:
     try:
         cnx = mysql.connector.connect(user=MYSQL_USER, password=MYSQL_PASSWORD,
                                       host=MYSQL_HOST, port=MYSQL_PORT,
                                       database=MYSQL_DATABASE)
         cursor = cnx.cursor(dictionary=True)
 
-        query = ("SELECT * FROM comentarios")
-        cursor.execute(query)
+        query = "SELECT * FROM comentarios WHERE correcoes_correcao_id = %s"
+        cursor.execute(query, (correcao_id,))
         comentarios = cursor.fetchall()
 
         cursor.close()
