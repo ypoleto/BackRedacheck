@@ -15,6 +15,15 @@ async def get_user(user_id: str):
         return user
     else:
         raise HTTPException(status_code=404, detail="User not found")
+    
+@router.get("/user/{username}")
+async def get_user_by_username(username: str):
+    user = await database.get_user_by_username(username)
+    if user:
+        return user
+    else:
+        raise HTTPException(status_code=404, detail="User not found")
+
 
 @router.post("/users/")
 async def create_user(user: User = Body(...)):

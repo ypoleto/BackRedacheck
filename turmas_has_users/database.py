@@ -1,5 +1,5 @@
 import mysql.connector
-from .models import TurmaHasUsersInDB, TurmaHasUsers
+from .models import TurmaHasUsersInDB, TurmaHasUsersResponse, TurmaHasUsers, UserResponse
 from typing import List
 
 MYSQL_USER = "root"
@@ -32,27 +32,51 @@ async def create_turma_has_user(turma_has_users: TurmaHasUsers) -> TurmaHasUsers
         return None
 
 
-async def list_turmas_has_users() -> List[dict]:
+async def list_turmas_has_users(turmaId: int) -> List[dict]:
     try:
         cnx = mysql.connector.connect(user=MYSQL_USER, password=MYSQL_PASSWORD,
                                       host=MYSQL_HOST, port=MYSQL_PORT,
                                       database=MYSQL_DATABASE)
         cursor = cnx.cursor(dictionary=True)
 
-        query = ("SELECT * FROM turmas_has_users")
-        cursor.execute(query)
-        turmas_users = cursor.fetchall()
-        print(turmas_users)
+        query = """
+                SELECT
+                    t.turma_id, 
+                    u.user_id, u.nome AS user_nome, u.username,
+                    thu.turmas_has_users_id
+                FROM turmas_has_users thu
+                JOIN turmas t ON thu.turmas_turma_id = t.turma_id
+                JOIN users u ON thu.users_user_id = u.user_id
+                WHERE thu.turmas_turma_id = %s
+            """
+            
+        cursor.execute(query, (turmaId,))
+        turmasUsers = cursor.fetchall()
 
         cursor.close()
         cnx.close()
+        print(turmasUsers)
 
-        return turmas_users
-
+        return [
+            TurmaHasUsersResponse(
+                turma_id=turmaUser['turma_id'],
+                turmas_has_users_id=turmaUser['turmas_has_users_id'],
+                user=UserResponse(
+                    user_id=turmaUser['user_id'],
+                    nome=turmaUser['user_nome'],
+                    username=turmaUser['username']
+                )
+            )
+            for turmaUser in turmasUsers
+        ]
+        
     except mysql.connector.Error as err:
         print(f"Error: {err}")
         return []
-
+    except ValueError as err:
+        print(f"Error: {err}")
+        return []
+    
 async def get_turma_has_users(turmas_has_users_id: int) -> TurmaHasUsersInDB:
     try:
         cnx = mysql.connector.connect(user=MYSQL_USER, password=MYSQL_PASSWORD,

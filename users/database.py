@@ -1,7 +1,6 @@
 import mysql.connector
 from .models import UserInDB, User
 from passlib.context import CryptContext
-from turmas.database import get_turma
 from typing import List
 
 # Configurações de conexão com o MySQL
@@ -25,7 +24,6 @@ async def create_user(user: User) -> UserInDB:
         cursor = cnx.cursor(dictionary=True)
 
         new_user_data = user.model_dump()
-        turma = new_user_data.pop('turma')
         new_user_data["password"] = get_password_hash(new_user_data["password"])
 
         user_query = ("INSERT INTO users (username, email, password, nome, tipo) VALUES"
@@ -34,13 +32,6 @@ async def create_user(user: User) -> UserInDB:
         cnx.commit()
 
         user_id = cursor.lastrowid
-        if turma is not None:
-            turma_user_data = {"turma": turma, "user_id": user_id}
-            query = ("INSERT INTO turmas_has_users (turmas_turma_id, users_user_id) VALUES"
-                    "(%(turma)s, %(user_id)s)")
-            cursor.execute(query, turma_user_data)
-        
-            cnx.commit()
         cursor.close()
         cnx.close()
 
@@ -89,8 +80,29 @@ async def get_user(user_id: str) -> UserInDB:
         if user:
             user_id = user["user_id"]
             user.pop("user_id", None)
-            user["turma"] = await get_turma(user["turma_id"])
             return UserInDB(**user, user_id=user_id)
+        return None
+
+    except mysql.connector.Error as err:
+        print(f"Error: {err}")
+        return None
+    
+async def get_user_by_username(username: str) -> UserInDB:
+    try:
+        cnx = mysql.connector.connect(user=MYSQL_USER, password=MYSQL_PASSWORD,
+                                      host=MYSQL_HOST, port=MYSQL_PORT,
+                                      database=MYSQL_DATABASE)
+        cursor = cnx.cursor(dictionary=True)
+
+        query = "SELECT * FROM users WHERE username = %s"
+        cursor.execute(query, (username,))
+        user = cursor.fetchone()
+
+        cursor.close()
+        cnx.close()
+
+        if user:
+            return UserInDB(**user)
         return None
 
     except mysql.connector.Error as err:

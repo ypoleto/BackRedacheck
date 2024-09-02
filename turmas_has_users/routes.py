@@ -5,8 +5,8 @@ from .models import TurmaHasUsers, TurmaHasUsersInDB
 router = APIRouter()
 
 @router.get("/turmas_users/")
-async def list_turmas_has_users():
-    return await database.list_turmas_has_users()
+async def list_turmas_has_users(turma_id: int):
+    return await database.list_turmas_has_users(turma_id)
 
 @router.get("/turmas_users/{turmas_has_users_id}")
 async def get_turma_has_users(turmas_has_users_id: int):
